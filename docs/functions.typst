@@ -1,0 +1,10 @@
+#let lines(type  , reqs, start: 0) = [
+  #for i in range(reqs.len()){
+    "•" + text(type + str(i + start), weight: "bold")  + reqs.at(i) + "\n"
+  }
+
+
+
+
+
+]
