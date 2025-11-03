@@ -606,3 +606,8 @@ CodeTogether нужна для того, чтобы организовать и 
 #figure(
   image("./diagrams/ER.png", width: 130%)
 )
+
+== Даталогическая модель
+#figure(
+  image("./diagrams/Datalogical.png", width: 130%)
+)
