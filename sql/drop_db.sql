@@ -1,5 +1,3 @@
--- Удаление объектов схемы в базе codetogether без удаления самой БД.
-\connect codetogether
 
 BEGIN;
 

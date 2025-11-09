@@ -1,14 +1,3 @@
--- Создание базы данных codetogether и всех объектов схемы.
--- Выполнять из psql под учетной записью с правом CREATE DATABASE.
-
-CREATE DATABASE codetogether
-  WITH ENCODING 'UTF8'
-       TEMPLATE template0
-       LC_COLLATE 'C'
-       LC_CTYPE 'C';
-
-\connect codetogether
-
 BEGIN;
 
 CREATE TABLE IF NOT EXISTS public."user" (

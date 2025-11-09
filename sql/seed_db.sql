@@ -1,5 +1,3 @@
--- Заполнение базы codetogether тестовыми данными.
-\connect codetogether
 
 BEGIN;
 
