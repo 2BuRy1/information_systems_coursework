@@ -611,3 +611,39 @@ CodeTogether нужна для того, чтобы организовать и 
 #figure(
   image("./diagrams/Datalogical.png", width: 130%)
 )
+
+== Индексы PostgreSQL для даталогической модели
+Для каждой таблицы схемы подобраны индексы, которые отражают основные сценарии: загрузка сессий и документов, журналирование операций редактирования, выдача прав и работа с задачами.
+
+=== document
+- CREATE UNIQUE INDEX document_session_id_uidx ON document(session_id) — обеспечивает быстрый доступ к документу по идентификатору сессии и гарантирует связь «один документ на сессию».
+- CREATE INDEX document_version_idx ON document(version DESC) — ускоряет проверку актуальной версии при сравнении с журналом операций и снапшотами.
+
+=== user
+- CREATE UNIQUE INDEX user_email_uidx ON "user"(lower(email)) — поиск аккаунта при входе выполняется по email без учета регистра.
+- CREATE INDEX user_name_idx ON "user"(name) — ускоряет выборку пользователей по имени при добавлении на сессию или поиске участника.
+
+=== session
+- CREATE UNIQUE INDEX session_link_uidx ON session(link) — позволяет быстро находить сессию по публичной ссылке-приглашению.
+- CREATE INDEX session_owner_idx ON session(user_id) — выводит список досок конкретного владельца без сканирования всей таблицы.
+- CREATE INDEX session_expiration_idx ON session(link_expires_at) — ускоряет фоновую очистку или блокировку просроченных ссылок.
+
+=== user_session
+- CREATE UNIQUE INDEX user_session_pair_uidx ON user_session(session_id, user_id) — предотвращает дублирование участников и ускоряет проверку прав конкретного пользователя на доску.
+- CREATE INDEX user_session_user_idx ON user_session(user_id) — формирует список всех сессий, где участвует пользователь (например, в личном кабинете).
+
+=== document_operation
+- CREATE INDEX document_operation_doc_version_idx ON document_operation(document_id, version) — быстрая загрузка операций, появившихся после известной версии документа.
+- CREATE INDEX document_operation_doc_node_idx ON document_operation(document_id, node_site, node_counter) — обслуживание CRDT/OT-алгоритма при сшивании соседних узлов.
+- CREATE INDEX document_operation_user_idx ON document_operation(user_id) — аудит действий конкретного участника или восстановление истории.
+
+=== document_snapshot
+- CREATE UNIQUE INDEX document_snapshot_doc_version_uidx ON document_snapshot(document_id, version) — обеспечивает один снапшот на версию и мгновенную загрузку нужного состояния.
+- CREATE INDEX document_snapshot_user_idx ON document_snapshot(user_id) — помогает находить сохранения, сделанные конкретным пользователем (например, при откате).
+
+=== highlight
+- CREATE INDEX highlight_session_range_idx ON highlight(session_id, start_line, start_col, end_line, end_col) — ускоряет выборку подсветок в рамках доски и проверку пересечений.
+- CREATE INDEX highlight_user_idx ON highlight(user_id) — позволяет быстро убрать/обновить все подсветки отдельного участника при выходе из сессии.
+
+=== cursor_state
+- CREATE INDEX cursor_state_user_idx ON cursor_state(user_id, session_id) — быстро находит активный курсор пользователя в сессии.
