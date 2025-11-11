@@ -614,6 +614,7 @@ CodeTogether нужна для того, чтобы организовать и 
 
 == Индексы PostgreSQL для даталогической модели
 Для каждой таблицы схемы подобраны индексы, которые отражают основные сценарии: загрузка сессий и документов, журналирование операций редактирования, выдача прав и работа с задачами.
+Все приведенные индексы используют B-tree
 
 === document
 - CREATE UNIQUE INDEX document_session_id_uidx ON document(session_id) — обеспечивает быстрый доступ к документу по идентификатору сессии и гарантирует связь «один документ на сессию».
@@ -624,13 +625,13 @@ CodeTogether нужна для того, чтобы организовать и 
 - CREATE INDEX user_name_idx ON "user"(name) — ускоряет выборку пользователей по имени при добавлении на сессию или поиске участника.
 
 === session
-- CREATE UNIQUE INDEX session_link_uidx ON session(link) — позволяет быстро находить сессию по публичной ссылке-приглашению.
-- CREATE INDEX session_owner_idx ON session(user_id) — выводит список досок конкретного владельца без сканирования всей таблицы.
-- CREATE INDEX session_expiration_idx ON session(link_expires_at) — ускоряет фоновую очистку или блокировку просроченных ссылок.
+- CREATE UNIQUE INDEX session_link_uidx ON session(link) — гарантирует уникальность и мгновенный поиск сессии по публичной ссылке, что требуется в сценарии UC7 «Приглашение участника» и в требовании «Система должна предоставлять возможность пригласить участника на доску».
+- CREATE INDEX session_owner_idx ON session(user_id) — ускоряет получение списка досок конкретного владельца в личном кабинете (UC5 «Создание новой доски», требование «Система должна предоставлять пользователям возможность создать новую доску»), вместо последовательного сканирования всей таблицы.
+- CREATE INDEX session_expiration_idx ON session(link_expires_at) — позволяет воркеру быстро находить и инвалидировать протухшие ссылки (требование «Система должна предоставить возможность инвалидировать ссылку через какое-то время»), не просматривая все строки.
 
 === user_session
-- CREATE UNIQUE INDEX user_session_pair_uidx ON user_session(session_id, user_id) — предотвращает дублирование участников и ускоряет проверку прав конкретного пользователя на доску.
-- CREATE INDEX user_session_user_idx ON user_session(user_id) — формирует список всех сессий, где участвует пользователь (например, в личном кабинете).
+- CREATE UNIQUE INDEX user_session_pair_uidx ON user_session(session_id, user_id) — на уровне БД запрещает дублирование участников (UC7) и ускоряет проверку прав конкретного пользователя на доску в сценариях «войти по приглашению» и «изменить роль участника».
+- CREATE INDEX user_session_user_idx ON user_session(user_id) — формирует список всех сессий, где участвует пользователь (например, при загрузке личного кабинета владельца), что опирается на требования о совместной разработке и управлении досками.
 
 === document_operation
 - CREATE INDEX document_operation_doc_version_idx ON document_operation(document_id, version) — быстрая загрузка операций, появившихся после известной версии документа.
@@ -642,8 +643,8 @@ CodeTogether нужна для того, чтобы организовать и 
 - CREATE INDEX document_snapshot_user_idx ON document_snapshot(user_id) — помогает находить сохранения, сделанные конкретным пользователем (например, при откате).
 
 === highlight
-- CREATE INDEX highlight_session_range_idx ON highlight(session_id, start_line, start_col, end_line, end_col) — ускоряет выборку подсветок в рамках доски и проверку пересечений.
-- CREATE INDEX highlight_user_idx ON highlight(user_id) — позволяет быстро убрать/обновить все подсветки отдельного участника при выходе из сессии.
+- CREATE INDEX highlight_session_range_idx ON highlight(session_id, start_line, start_col, end_line, end_col) — ускоряет загрузку всех подсветок доски при подключении (UC6 «Совместное редактирование кода», требование «Система должна предоставить возможность видеть чужие курсоры и выделяемый текст») и служит для быстрой проверки пересечений диапазонов
+- CREATE INDEX highlight_user_idx ON highlight(user_id) — позволяет за один запрос удалить или пересоздать все подсветки конкретного участника (например, при выходе из сессии или смене роли на «viewer»).
 
 === cursor_state
 - CREATE INDEX cursor_state_user_idx ON cursor_state(user_id, session_id) — быстро находит активный курсор пользователя в сессии.
