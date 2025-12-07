@@ -1,0 +1,1060 @@
+openapi: 3.1.0
+info:
+  title: CodeTogether API
+  version: 0.2.0
+  description: |
+    REST API платформы совместного редактирования кода CodeTogether.
+    Все идентификаторы и поля совпадают с колонками схемы PostgreSQL из `sql/create_db.sql`.
+    \nДокумент использует CRDT-журнал, который хранится в таблице `document_operation` (колонки `node_site`,
+    `node_counter`, `left_node`, `right_node`, `operation_type`, `value`, `color`, `version`, `user_id`).
+    Клиент обязан передавать `baseVersion` и набор операций в последовательности. Сервер применяет операции атомарно,
+    увеличивает версию документа и возвращает фактический журнал.
+servers:
+  - url: https://api.codetogether.local/v1
+    description: Прод
+  - url: http://localhost:8080/v1
+    description: Dev
+security:
+  - bearerAuth: []
+tags:
+  - name: Auth
+    description: OAuth 2.0 авторизация через GitHub / Google
+  - name: Users
+    description: Профиль
+  - name: Sessions
+    description: Доски, участники и приглашения
+  - name: Document
+    description: Документ, CRDT и статистика
+  - name: Tasks
+    description: Панель задач доски
+  - name: Presence
+    description: Курсоры и подсветки
+paths:
+  /oauth/github/url:
+    get:
+      tags: [Auth]
+      summary: Получить ссылку GitHub OAuth2
+      responses:
+        '200':
+          description: Сформирован state/URL
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OAuthUrlResponse'
+  /oauth/github/exchange:
+    post:
+      tags: [Auth]
+      summary: Обменять GitHub code на токены платформы
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OAuthExchangeRequest'
+      responses:
+        '200':
+          description: Успешная авторизация
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '400':
+          description: Ошибочный code/state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /oauth/google/url:
+    get:
+      tags: [Auth]
+      summary: Получить ссылку Google OAuth2
+      responses:
+        '200':
+          description: Сформирован state/URL
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OAuthUrlResponse'
+  /oauth/google/exchange:
+    post:
+      tags: [Auth]
+      summary: Обменять Google code на токены платформы
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OAuthExchangeRequest'
+      responses:
+        '200':
+          description: Успешная авторизация
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '400':
+          description: Ошибочный code/state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /users/me:
+    get:
+      tags: [Users]
+      summary: Получить профиль текущего пользователя
+      responses:
+        '200':
+          description: Профиль
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfile'
+    patch:
+      tags: [Users]
+      summary: Обновить имя/аватар
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserUpdateRequest'
+      responses:
+        '200':
+          description: Обновлённый профиль
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfile'
+  /sessions:
+    get:
+      tags: [Sessions]
+      summary: Список досок пользователя
+      parameters:
+        - in: query
+          name: role
+          schema:
+            type: string
+            enum: [owner, editor, viewer]
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - in: query
+          name: cursor
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Страница досок
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionList'
+    post:
+      tags: [Sessions]
+      summary: Создать доску
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SessionRequest'
+      responses:
+        '201':
+          description: Доска создана
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionDetails'
+  /sessions/{sessionId}:
+    parameters:
+      - $ref: '#/components/parameters/SessionIdParam'
+    get:
+      tags: [Sessions]
+      summary: Получить доску
+      responses:
+        '200':
+          description: Информация о доске
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionDetails'
+    patch:
+      tags: [Sessions]
+      summary: Обновить имя/язык
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SessionUpdateRequest'
+      responses:
+        '200':
+          description: Обновлённые данные
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionDetails'
+    delete:
+      tags: [Sessions]
+      summary: Удалить доску
+      responses:
+        '204':
+          description: Удалена
+  /sessions/{sessionId}/members:
+    parameters:
+      - $ref: '#/components/parameters/SessionIdParam'
+    get:
+      tags: [Sessions]
+      summary: Список участников доски
+      responses:
+        '200':
+          description: Массив участникoв
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SessionMember'
+    post:
+      tags: [Sessions]
+      summary: Добавить участника (email или id)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MemberInviteRequest'
+      responses:
+        '201':
+          description: Участник создан
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionMember'
+  /sessions/{sessionId}/members/{userId}:
+    parameters:
+      - $ref: '#/components/parameters/SessionIdParam'
+      - $ref: '#/components/parameters/UserIdParam'
+    patch:
+      tags: [Sessions]
+      summary: Изменить роль участника
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MemberRoleRequest'
+      responses:
+        '200':
+          description: Обновлённая роль
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionMember'
+    delete:
+      tags: [Sessions]
+      summary: Удалить участника
+      responses:
+        '204':
+          description: Удалён
+  /sessions/{sessionId}/invites:
+    parameters:
+      - $ref: '#/components/parameters/SessionIdParam'
+    post:
+      tags: [Sessions]
+      summary: Сгенерировать публичную ссылку
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InviteCreateRequest'
+      responses:
+        '201':
+          description: Возвращает токен и URL
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InviteLink'
+  /invites/{token}/accept:
+    parameters:
+      - $ref: '#/components/parameters/TokenParam'
+    post:
+      tags: [Sessions]
+      summary: Присоединиться по ссылке
+      responses:
+        '200':
+          description: Доступ к доске предоставлен
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionDetails'
+        '410':
+          description: Ссылка протухла
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /public/sessions/{token}:
+    parameters:
+      - $ref: '#/components/parameters/TokenParam'
+    get:
+      tags: [Sessions]
+      summary: Публичный просмотр доски (анонимный)
+      security: []
+      responses:
+        '200':
+          description: Публичные данные
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicSessionView'
+  /sessions/{sessionId}/document:
+    parameters:
+      - $ref: '#/components/parameters/SessionIdParam'
+    get:
+      tags: [Document]
+      summary: Получить текущее состояние документа
+      responses:
+        '200':
+          description: Документ и версия
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentState'
+  /sessions/{sessionId}/document/operations:
+    parameters:
+      - $ref: '#/components/parameters/SessionIdParam'
+    get:
+      tags: [Document]
+      summary: Получить операции после указанной версии
+      parameters:
+        - in: query
+          name: sinceVersion
+          schema:
+            type: integer
+            minimum: 0
+          description: Последняя известная версия
+      responses:
+        '200':
+          description: Журнал операций
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OperationsResponse'
+    post:
+      tags: [Document]
+      summary: Добавить пакет операций
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OperationRequest'
+      responses:
+        '201':
+          description: Операции применены
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OperationAck'
+        '409':
+          description: Версия устарела
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /sessions/{sessionId}/document/snapshots:
+    parameters:
+      - $ref: '#/components/parameters/SessionIdParam'
+    get:
+      tags: [Document]
+      summary: История снапшотов
+      responses:
+        '200':
+          description: Список снапшотов
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DocumentSnapshot'
+    post:
+      tags: [Document]
+      summary: Сохранить снапшот
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SnapshotRequest'
+      responses:
+        '201':
+          description: Снапшот создан
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentSnapshot'
+  /sessions/{sessionId}/tasks:
+    parameters:
+      - $ref: '#/components/parameters/SessionIdParam'
+    get:
+      tags: [Tasks]
+      summary: Задачи доски
+      responses:
+        '200':
+          description: Массив задач
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Task'
+    post:
+      tags: [Tasks]
+      summary: Создать задачу
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaskRequest'
+      responses:
+        '201':
+          description: Задача создана
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+  /sessions/{sessionId}/tasks/{taskId}:
+    parameters:
+      - $ref: '#/components/parameters/SessionIdParam'
+      - $ref: '#/components/parameters/TaskIdParam'
+    patch:
+      tags: [Tasks]
+      summary: Обновить текст/статус/данные
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaskUpdateRequest'
+      responses:
+        '200':
+          description: Обновлённая задача
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+    delete:
+      tags: [Tasks]
+      summary: Удалить задачу
+      responses:
+        '204':
+          description: Удалено
+  /sessions/{sessionId}/presence:
+    parameters:
+      - $ref: '#/components/parameters/SessionIdParam'
+    get:
+      tags: [Presence]
+      summary: Текущее присутствие
+      responses:
+        '200':
+          description: Курсоры и подсветки
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionPresence'
+  /sessions/{sessionId}/presence/cursor:
+    parameters:
+      - $ref: '#/components/parameters/SessionIdParam'
+    put:
+      tags: [Presence]
+      summary: Обновить курсор пользователя
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CursorUpdateRequest'
+      responses:
+        '200':
+          description: Текущее состояние
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CursorState'
+    delete:
+      tags: [Presence]
+      summary: Очистить курсор
+      responses:
+        '204':
+          description: Очищено
+  /sessions/{sessionId}/presence/highlight:
+    parameters:
+      - $ref: '#/components/parameters/SessionIdParam'
+    put:
+      tags: [Presence]
+      summary: Обновить подсветку
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/HighlightRequest'
+      responses:
+        '200':
+          description: Текущая подсветка
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Highlight'
+    delete:
+      tags: [Presence]
+      summary: Очистить подсветку
+      responses:
+        '204':
+          description: Очищено
+  /sessions/{sessionId}/statistics:
+    parameters:
+      - $ref: '#/components/parameters/SessionIdParam'
+    get:
+      tags: [Document]
+      summary: Статистика документа
+      responses:
+        '200':
+          description: Статистика
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentStats'
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    SessionIdParam:
+      name: sessionId
+      in: path
+      required: true
+      schema:
+        type: integer
+        format: int64
+    UserIdParam:
+      name: userId
+      in: path
+      required: true
+      schema:
+        type: integer
+        format: int64
+    TaskIdParam:
+      name: taskId
+      in: path
+      required: true
+      schema:
+        type: integer
+        format: int64
+    TokenParam:
+      name: token
+      in: path
+      required: true
+      schema:
+        type: string
+  schemas:
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+        details:
+          type: string
+          nullable: true
+    OAuthUrlResponse:
+      type: object
+      required: [url, state]
+      properties:
+        url:
+          type: string
+          format: uri
+        state:
+          type: string
+    OAuthExchangeRequest:
+      type: object
+      required: [code, state, redirectUri]
+      properties:
+        code:
+          type: string
+        state:
+          type: string
+        redirectUri:
+          type: string
+          format: uri
+    AuthResponse:
+      type: object
+      required: [tokens, user]
+      properties:
+        tokens:
+          $ref: '#/components/schemas/AuthTokens'
+        user:
+          $ref: '#/components/schemas/UserProfile'
+    AuthTokens:
+      type: object
+      required: [accessToken, refreshToken, expiresIn]
+      properties:
+        accessToken:
+          type: string
+        refreshToken:
+          type: string
+        expiresIn:
+          type: integer
+          description: TTL access-токена в секундах
+    UserProfile:
+      type: object
+      required: [id, name, email, role]
+      properties:
+        id:
+          type: integer
+          format: int64
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        avatarUrl:
+          type: string
+          format: uri
+          nullable: true
+        role:
+          type: string
+          enum: [member, moderator, admin]
+    UserUpdateRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        avatarUrl:
+          type: string
+          format: uri
+    SessionRequest:
+      type: object
+      required: [name, language]
+      properties:
+        name:
+          type: string
+        language:
+          type: string
+    SessionUpdateRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        language:
+          type: string
+    SessionSummary:
+      type: object
+      required: [id, name, language, ownerId, role, updatedAt]
+      properties:
+        id:
+          type: integer
+          format: int64
+        name:
+          type: string
+        language:
+          type: string
+        ownerId:
+          type: integer
+          format: int64
+        role:
+          type: string
+          enum: [owner, editor, viewer]
+        updatedAt:
+          type: string
+          format: date-time
+    SessionDetails:
+      allOf:
+        - $ref: '#/components/schemas/SessionSummary'
+        - type: object
+          required: [link, linkExpiresAt]
+          properties:
+            link:
+              type: string
+            linkExpiresAt:
+              type: string
+              format: date-time
+            stats:
+              $ref: '#/components/schemas/DocumentStats'
+    SessionList:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/SessionSummary'
+        nextCursor:
+          type: integer
+          format: int64
+          nullable: true
+    SessionMember:
+      type: object
+      required: [sessionId, userId, role, joinedAt]
+      properties:
+        sessionId:
+          type: integer
+          format: int64
+        userId:
+          type: integer
+          format: int64
+        role:
+          type: string
+          enum: [owner, editor, viewer]
+        joinedAt:
+          type: string
+          format: date-time
+        name:
+          type: string
+        avatarUrl:
+          type: string
+          nullable: true
+    MemberInviteRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+        userId:
+          type: integer
+          format: int64
+        role:
+          type: string
+          enum: [editor, viewer]
+          default: editor
+      anyOf:
+        - required: [email]
+        - required: [userId]
+    MemberRoleRequest:
+      type: object
+      required: [role]
+      properties:
+        role:
+          type: string
+          enum: [owner, editor, viewer]
+    InviteCreateRequest:
+      type: object
+      required: [expiresInMinutes]
+      properties:
+        expiresInMinutes:
+          type: integer
+          minimum: 5
+          maximum: 1440
+    InviteLink:
+      type: object
+      required: [sessionId, link, expiresAt]
+      properties:
+        sessionId:
+          type: integer
+          format: int64
+        link:
+          type: string
+        expiresAt:
+          type: string
+          format: date-time
+    PublicSessionView:
+      type: object
+      required: [sessionId, name, language, ownerName, document]
+      properties:
+        sessionId:
+          type: integer
+          format: int64
+        name:
+          type: string
+        language:
+          type: string
+        ownerName:
+          type: string
+        expiresAt:
+          type: string
+          format: date-time
+          nullable: true
+        document:
+          $ref: '#/components/schemas/DocumentState'
+    DocumentState:
+      type: object
+      required: [id, sessionId, version, content]
+      properties:
+        id:
+          type: integer
+          format: int64
+        sessionId:
+          type: integer
+          format: int64
+        version:
+          type: integer
+        content:
+          type: string
+        updatedAt:
+          type: string
+          format: date-time
+    DocumentSnapshot:
+      type: object
+      required: [id, documentId, version, userId, content, createdAt]
+      properties:
+        id:
+          type: integer
+          format: int64
+        documentId:
+          type: integer
+          format: int64
+        version:
+          type: integer
+        userId:
+          type: integer
+          format: int64
+        content:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+    SnapshotRequest:
+      type: object
+      required: [version, content]
+      properties:
+        version:
+          type: integer
+        content:
+          type: string
+    OperationRequest:
+      type: object
+      required: [baseVersion, operations]
+      properties:
+        baseVersion:
+          type: integer
+        operations:
+          type: array
+          items:
+            $ref: '#/components/schemas/CrdtOperationInput'
+    OperationAck:
+      type: object
+      required: [appliedVersion, operations]
+      properties:
+        appliedVersion:
+          type: integer
+        operations:
+          type: array
+          items:
+            $ref: '#/components/schemas/CrdtOperation'
+    OperationsResponse:
+      type: object
+      required: [fromVersion, toVersion, operations]
+      properties:
+        fromVersion:
+          type: integer
+        toVersion:
+          type: integer
+        operations:
+          type: array
+          items:
+            $ref: '#/components/schemas/CrdtOperation'
+    CrdtOperationInput:
+      type: object
+      required: [operationType, nodeCounter, nodeSite, value]
+      properties:
+        operationType:
+          type: string
+          enum: [insert, delete, retain]
+        nodeCounter:
+          type: integer
+        nodeSite:
+          type: integer
+        leftNode:
+          type: integer
+          nullable: true
+        rightNode:
+          type: integer
+          nullable: true
+        value:
+          type: string
+        color:
+          type: string
+          nullable: true
+    CrdtOperation:
+      allOf:
+        - $ref: '#/components/schemas/CrdtOperationInput'
+        - type: object
+          required: [id, documentId, version, userId, createdAt]
+          properties:
+            id:
+              type: integer
+              format: int64
+            documentId:
+              type: integer
+              format: int64
+            version:
+              type: integer
+            userId:
+              type: integer
+              format: int64
+            createdAt:
+              type: string
+              format: date-time
+    Task:
+      type: object
+      required: [id, sessionId, text, status, userId]
+      properties:
+        id:
+          type: integer
+          format: int64
+        sessionId:
+          type: integer
+          format: int64
+        text:
+          type: string
+        status:
+          type: string
+          enum: [open, in_progress, done]
+        userId:
+          type: integer
+          format: int64
+        metadata:
+          $ref: '#/components/schemas/TaskMetadata'
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    TaskRequest:
+      type: object
+      required: [text]
+      properties:
+        text:
+          type: string
+        metadata:
+          $ref: '#/components/schemas/TaskMetadata'
+    TaskUpdateRequest:
+      type: object
+      properties:
+        text:
+          type: string
+        status:
+          type: string
+          enum: [open, in_progress, done]
+        metadata:
+          $ref: '#/components/schemas/TaskMetadata'
+    TaskMetadata:
+      type: object
+      additionalProperties:
+        type: string
+    CursorState:
+      type: object
+      required: [sessionId, userId, line, col, color]
+      properties:
+        sessionId:
+          type: integer
+          format: int64
+        userId:
+          type: integer
+          format: int64
+        line:
+          type: integer
+        col:
+          type: integer
+        color:
+          type: string
+        updatedAt:
+          type: string
+          format: date-time
+    CursorUpdateRequest:
+      type: object
+      required: [line, col]
+      properties:
+        line:
+          type: integer
+        col:
+          type: integer
+        color:
+          type: string
+          nullable: true
+    Highlight:
+      type: object
+      required: [sessionId, userId, startLine, endLine, startCol, endCol, color]
+      properties:
+        sessionId:
+          type: integer
+          format: int64
+        userId:
+          type: integer
+          format: int64
+        startLine:
+          type: integer
+        endLine:
+          type: integer
+        startCol:
+          type: integer
+        endCol:
+          type: integer
+        color:
+          type: string
+        updatedAt:
+          type: string
+          format: date-time
+    HighlightRequest:
+      type: object
+      required: [startLine, endLine, startCol, endCol]
+      properties:
+        startLine:
+          type: integer
+        endLine:
+          type: integer
+        startCol:
+          type: integer
+        endCol:
+          type: integer
+        color:
+          type: string
+          nullable: true
+    SessionPresence:
+      type: object
+      required: [sessionId, cursors, highlights]
+      properties:
+        sessionId:
+          type: integer
+          format: int64
+        cursors:
+          type: array
+          items:
+            $ref: '#/components/schemas/CursorState'
+        highlights:
+          type: array
+          items:
+            $ref: '#/components/schemas/Highlight'
+    DocumentStats:
+      type: object
+      required: [sessionId, documentId, activeParticipants, operationCount, lastSnapshotVersion]
+      properties:
+        sessionId:
+          type: integer
+          format: int64
+        documentId:
+          type: integer
+          format: int64
+        activeParticipants:
+          type: integer
+        operationCount:
+          type: integer
+        lastSnapshotVersion:
+          type: integer
+        averageLatencyMs:
+          type: integer
+          nullable: true
+        typingRate:
+          type: number
+          format: float
+          nullable: true

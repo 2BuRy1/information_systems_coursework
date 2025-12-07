@@ -1,0 +1,66 @@
+package ru.itmo.codetogether.service;
+
+import java.util.Optional;
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import ru.itmo.codetogether.dto.UserDto;
+import ru.itmo.codetogether.exception.CodeTogetherException;
+import ru.itmo.codetogether.model.UserEntity;
+import ru.itmo.codetogether.repository.UserRepository;
+
+@Service
+public class UserService {
+
+    private final UserRepository userRepository;
+
+    public UserService(UserRepository userRepository) {
+        this.userRepository = userRepository;
+    }
+
+    public Optional<UserEntity> findByEmail(String email) {
+        if (email == null) {
+            return Optional.empty();
+        }
+        return userRepository.findByEmail(email.toLowerCase());
+    }
+
+    public Optional<UserEntity> findById(Long id) {
+        return userRepository.findById(id);
+    }
+
+    public UserEntity requireUser(Long id) {
+        return userRepository.findById(id)
+                .orElseThrow(() -> new CodeTogetherException(HttpStatus.UNAUTHORIZED, "Пользователь не найден"));
+    }
+
+    @Transactional
+    public UserEntity getOrCreateOAuthUser(String name, String email, String avatarUrl) {
+        return userRepository
+                .findByEmail(email.toLowerCase())
+                .orElseGet(() -> {
+                    UserEntity entity = new UserEntity();
+                    entity.setName(name);
+                    entity.setEmail(email.toLowerCase());
+                    entity.setAvatarUrl(avatarUrl);
+                    entity.setRole("member");
+                    return userRepository.save(entity);
+                });
+    }
+
+    @Transactional
+    public UserDto.UserProfile updateProfile(UserEntity user, UserDto.UserUpdateRequest request) {
+        if (request.name() != null && !request.name().isBlank()) {
+            user.setName(request.name());
+        }
+        if (request.avatarUrl() != null && !request.avatarUrl().isBlank()) {
+            user.setAvatarUrl(request.avatarUrl());
+        }
+        userRepository.save(user);
+        return toProfile(user);
+    }
+
+    public UserDto.UserProfile toProfile(UserEntity entity) {
+        return new UserDto.UserProfile(entity.getId(), entity.getName(), entity.getEmail(), entity.getAvatarUrl(), entity.getRole());
+    }
+}
