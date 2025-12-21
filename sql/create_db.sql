@@ -1,6 +1,6 @@
 BEGIN;
 
-CREATE TABLE IF NOT EXISTS public."user" (
+CREATE TABLE IF NOT EXISTS public.users (
     id          SERIAL PRIMARY KEY,
     name        TEXT        NOT NULL,
     email       TEXT        NOT NULL,
@@ -12,7 +12,7 @@ CREATE TABLE IF NOT EXISTS public.session (
     id               SERIAL PRIMARY KEY,
     name             TEXT           NOT NULL,
     language         VARCHAR(128),
-    user_id          INTEGER        NOT NULL REFERENCES public."user"(id) ON DELETE CASCADE,
+    user_id          INTEGER        NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
     link             VARCHAR(256)   NOT NULL,
     link_expires_at  TIMESTAMP      NOT NULL
 );
@@ -29,7 +29,7 @@ CREATE TABLE IF NOT EXISTS public.document_snapshot (
     document_id  INTEGER NOT NULL REFERENCES public.document(id) ON DELETE CASCADE,
     version      INTEGER NOT NULL,
     content_text TEXT    NOT NULL,
-    user_id      INTEGER NOT NULL REFERENCES public."user"(id) ON DELETE CASCADE
+    user_id      INTEGER NOT NULL REFERENCES public.users(id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS public.document_operation (
@@ -43,12 +43,12 @@ CREATE TABLE IF NOT EXISTS public.document_operation (
     color          VARCHAR(30),
     value          TEXT         NOT NULL,
     version        INTEGER      NOT NULL,
-    user_id        INTEGER      NOT NULL REFERENCES public."user"(id) ON DELETE CASCADE
+    user_id        INTEGER      NOT NULL REFERENCES public.users(id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS public.highlight (
     session_id  INTEGER     NOT NULL REFERENCES public.session(id) ON DELETE CASCADE,
-    user_id     INTEGER     NOT NULL REFERENCES public."user"(id) ON DELETE CASCADE,
+    user_id     INTEGER     NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
     start_line  INTEGER     NOT NULL,
     end_line    INTEGER     NOT NULL,
     start_col   INTEGER     NOT NULL,
@@ -59,7 +59,7 @@ CREATE TABLE IF NOT EXISTS public.highlight (
 
 CREATE TABLE IF NOT EXISTS public.cursor_state (
     session_id INTEGER     NOT NULL REFERENCES public.session(id) ON DELETE CASCADE,
-    user_id    INTEGER     NOT NULL REFERENCES public."user"(id) ON DELETE CASCADE,
+    user_id    INTEGER     NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
     line       INTEGER     NOT NULL,
     col        INTEGER     NOT NULL,
     color      VARCHAR(30) NOT NULL,
@@ -68,7 +68,7 @@ CREATE TABLE IF NOT EXISTS public.cursor_state (
 
 CREATE TABLE IF NOT EXISTS public.oauth_credentials (
     id               SERIAL PRIMARY KEY,
-    user_id          INTEGER       NOT NULL REFERENCES public."user"(id) ON DELETE CASCADE,
+    user_id          INTEGER       NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
     provider         VARCHAR(128)  NOT NULL,
     access_token     VARCHAR(2048),
     refresh_token    VARCHAR(2048),
@@ -78,7 +78,7 @@ CREATE TABLE IF NOT EXISTS public.oauth_credentials (
 
 CREATE TABLE IF NOT EXISTS public.user_session (
     session_id INTEGER     NOT NULL REFERENCES public.session(id) ON DELETE CASCADE,
-    user_id    INTEGER     NOT NULL REFERENCES public."user"(id) ON DELETE CASCADE,
+    user_id    INTEGER     NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
     role       VARCHAR(64) NOT NULL DEFAULT 'editor',
     PRIMARY KEY (session_id, user_id)
 );
@@ -88,7 +88,7 @@ CREATE TABLE IF NOT EXISTS public.task (
     session_id INTEGER     NOT NULL REFERENCES public.session(id) ON DELETE CASCADE,
     text       TEXT        NOT NULL,
     status     VARCHAR(30) NOT NULL DEFAULT 'open',
-    user_id    INTEGER     NOT NULL REFERENCES public."user"(id) ON DELETE CASCADE
+    user_id    INTEGER     NOT NULL REFERENCES public.users(id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS public.task_data (
@@ -101,8 +101,8 @@ CREATE TABLE IF NOT EXISTS public.task_data (
 CREATE UNIQUE INDEX IF NOT EXISTS document_session_id_uidx ON public.document(session_id);
 CREATE INDEX IF NOT EXISTS document_version_idx ON public.document(version DESC);
 
-CREATE UNIQUE INDEX IF NOT EXISTS user_email_uidx ON public."user"(lower(email));
-CREATE INDEX IF NOT EXISTS user_name_idx ON public."user"(name);
+CREATE UNIQUE INDEX IF NOT EXISTS user_email_uidx ON public.users(lower(email));
+CREATE INDEX IF NOT EXISTS user_name_idx ON public.users(name);
 
 CREATE UNIQUE INDEX IF NOT EXISTS session_link_uidx ON public.session(link);
 CREATE INDEX IF NOT EXISTS session_owner_idx ON public.session(user_id);

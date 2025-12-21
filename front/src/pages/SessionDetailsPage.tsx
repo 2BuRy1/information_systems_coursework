@@ -7,11 +7,13 @@ import TaskBoard from '../components/TaskBoard';
 import { loadSession } from '../services/api';
 import { SessionDetails } from '../types';
 import { useAuth } from '../contexts/AuthContext';
+import AppShell from '../components/AppShell';
+import CopyField from '../components/CopyField';
 
 const SessionDetailsPage = () => {
   const { sessionId } = useParams();
   const numericId = Number(sessionId);
-  const { tokens, user, logout } = useAuth();
+  const { tokens, user } = useAuth();
   const navigate = useNavigate();
   const [session, setSession] = useState<SessionDetails | null>(null);
 
@@ -28,35 +30,36 @@ const SessionDetailsPage = () => {
     return <div className="container">Загрузка...</div>;
   }
 
+  const publicUrl = `${window.location.origin}/public/${session.link}`;
+
   return (
-    <div className="container" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div>
-          <h2>{session.name}</h2>
-          <p>
-            Ссылка для гостей:
-            <code>{`${window.location.origin}/public/${session.link}`}</code>
-          </p>
-          <small>Срок действия: {new Date(session.linkExpiresAt).toLocaleString()}</small>
-        </div>
-        <div style={{ display: 'flex', gap: 12 }}>
-          <button onClick={() => navigate('/sessions')}>К списку</button>
-          <button onClick={logout}>Выйти</button>
-        </div>
-      </header>
-      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 16 }}>
+    <AppShell
+      title={session.name}
+      subtitle={session.language ? `Язык: ${session.language}` : undefined}
+      actions={
+        <button type="button" className="btn btn-ghost" onClick={() => navigate('/sessions')}>
+          К списку
+        </button>
+      }
+    >
+      <section className="card" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <CopyField
+          label="Ссылка для гостей"
+          value={publicUrl}
+          hint={`Действует до: ${new Date(session.linkExpiresAt).toLocaleString()}`}
+        />
+      </section>
+
+      <div className="board-grid">
         <DocumentEditor sessionId={numericId} />
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <MembersList
-            sessionId={numericId}
-            currentUserId={user?.id}
-            canManage={session.role === 'owner'}
-          />
+        <div className="board-side">
+          <MembersList sessionId={numericId} currentUserId={user?.id} canManage={session.role === 'owner'} />
           <PresencePanel sessionId={numericId} />
         </div>
       </div>
+
       <TaskBoard sessionId={numericId} />
-    </div>
+    </AppShell>
   );
 };
 

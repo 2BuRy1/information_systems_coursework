@@ -3,14 +3,18 @@ import { useNavigate } from 'react-router-dom';
 import { createSession, listSessions } from '../services/api';
 import { SessionSummary } from '../types';
 import { useAuth } from '../contexts/AuthContext';
+import AppShell from '../components/AppShell';
+import LanguagePicker from '../components/LanguagePicker';
+import { displayName } from '../utils/format';
 
 const SessionsPage = () => {
-  const { tokens, user, logout } = useAuth();
+  const { tokens, user } = useAuth();
   const [sessions, setSessions] = useState<SessionSummary[]>([]);
   const [loading, setLoading] = useState(true);
-  const [name, setName] = useState('Новая доска');
+  const [name, setName] = useState('');
   const [language, setLanguage] = useState('typescript');
   const navigate = useNavigate();
+  const [creating, setCreating] = useState(false);
 
   useEffect(() => {
     if (!tokens) return;
@@ -19,12 +23,18 @@ const SessionsPage = () => {
       .finally(() => setLoading(false));
   }, [tokens]);
 
-  const sorted = useMemo(() => sessions.sort((a, b) => (a.updatedAt > b.updatedAt ? -1 : 1)), [sessions]);
+  const sorted = useMemo(() => [...sessions].sort((a, b) => (a.updatedAt > b.updatedAt ? -1 : 1)), [sessions]);
 
   const handleCreate = async () => {
     if (!tokens) return;
-    const session = await createSession(tokens, { name, language });
-    navigate(`/sessions/${session.id}`);
+    const trimmed = name.trim() || 'Новая доска';
+    setCreating(true);
+    try {
+      const session = await createSession(tokens, { name: trimmed, language });
+      navigate(`/sessions/${session.id}`);
+    } finally {
+      setCreating(false);
+    }
   };
 
   if (!tokens) {
@@ -32,31 +42,63 @@ const SessionsPage = () => {
   }
 
   return (
-    <div className="container" style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-      <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div>
-          <h2>Мои доски</h2>
-          <p>{user?.email}</p>
+    <AppShell
+      title="Мои доски"
+      subtitle={user ? `Добро пожаловать, ${displayName(user)}.` : undefined}
+    >
+      <section className="card create-card">
+        <div className="create-head">
+          <div>
+            <h3 style={{ margin: 0 }}>Создать доску</h3>
+            <p className="muted" style={{ margin: '6px 0 0' }}>
+              Выберите язык — и можно начинать совместную работу.
+            </p>
+          </div>
+          <button type="button" className="btn btn-primary" onClick={handleCreate} disabled={creating}>
+            {creating ? 'Создаём…' : 'Создать'}
+          </button>
         </div>
-        <button onClick={logout}>Выйти</button>
-      </header>
-      <section className="card" style={{ display: 'flex', gap: 12 }}>
-        <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Название" />
-        <input value={language} onChange={(e) => setLanguage(e.target.value)} placeholder="Язык" />
-        <button onClick={handleCreate}>Создать</button>
+        <div className="create-body">
+          <div className="create-form">
+            <label className="field">
+              <span className="field-label">Название</span>
+              <input
+                className="input"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Например: Подготовка к интервью"
+              />
+            </label>
+            <div className="field">
+              <div className="field-label">Язык</div>
+              <LanguagePicker value={language} onChange={setLanguage} />
+            </div>
+          </div>
+        </div>
       </section>
-      <section className="sessions-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16 }}>
-        {loading && <p>Загрузка...</p>}
+
+      <section className="sessions-grid">
+        {loading && <p className="muted">Загрузка…</p>}
         {!loading &&
           sorted.map((session) => (
-            <div key={session.id} className="card" style={{ cursor: 'pointer' }} onClick={() => navigate(`/sessions/${session.id}`)}>
-              <h3>{session.name}</h3>
-              <p>Язык: {session.language}</p>
-              <p>Роль: {session.role}</p>
-            </div>
+            <button
+              key={session.id}
+              type="button"
+              className="card session-card"
+              onClick={() => navigate(`/sessions/${session.id}`)}
+            >
+              <div className="session-card-top">
+                <div className="session-title">{session.name}</div>
+                <span className="pill pill-muted">{session.role}</span>
+              </div>
+              <div className="session-meta">
+                <span className="pill">{session.language || '—'}</span>
+                <span className="muted">{new Date(session.updatedAt).toLocaleString()}</span>
+              </div>
+            </button>
           ))}
       </section>
-    </div>
+    </AppShell>
   );
 };
 

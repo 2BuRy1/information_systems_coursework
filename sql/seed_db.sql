@@ -12,10 +12,10 @@ TRUNCATE TABLE
     oauth_credentials,
     document,
     session,
-    "user"
+    users
 RESTART IDENTITY CASCADE;
 
-INSERT INTO public."user" (name, email, avatar_url, role) VALUES
+INSERT INTO public.users (name, email, avatar_url, role) VALUES
     ('Евгений Фёдоров', 'owner@codetogether.local', 'https://avatars.example/owner.png', 'owner'),
     ('Артём Бондаренко', 'mentor@codetogether.local', 'https://avatars.example/mentor.png', 'mentor'),
     ('София Иванова', 'guest@codetogether.local', NULL, 'guest');

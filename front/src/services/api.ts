@@ -15,12 +15,12 @@ import {
 const API_BASE = '/v1';
 
 async function request<T>(path: string, options: RequestInit = {}, tokens?: AuthTokens | null): Promise<T> {
-  const headers: HeadersInit = {
+  const headers: Record<string, string> = {
     'Content-Type': 'application/json',
-    ...(options.headers || {})
+    ...((options.headers as Record<string, string> | undefined) || {})
   };
   if (tokens?.accessToken) {
-    headers['Authorization'] = `Bearer ${tokens.accessToken}`;
+    headers.Authorization = `Bearer ${tokens.accessToken}`;
   }
   const response = await fetch(`${API_BASE}${path}`, {
     ...options,
@@ -52,6 +52,20 @@ export async function exchangeOAuth(
 
 export async function loadProfile(tokens: AuthTokens): Promise<UserProfile> {
   return request('/users/me', {}, tokens);
+}
+
+export async function updateProfile(
+  tokens: AuthTokens,
+  payload: Partial<{ name: string; avatarUrl: string }>
+): Promise<UserProfile> {
+  return request(
+    '/users/me',
+    {
+      method: 'PATCH',
+      body: JSON.stringify(payload)
+    },
+    tokens
+  );
 }
 
 export async function listSessions(

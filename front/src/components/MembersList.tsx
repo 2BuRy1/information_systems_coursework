@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { loadMembers, removeMember, updateMemberRole } from '../services/api';
 import { SessionMember } from '../types';
 import { useAuth } from '../contexts/AuthContext';
+import { displayName } from '../utils/format';
 
 interface Props {
   sessionId: number;
@@ -76,6 +77,7 @@ const MembersList: React.FC<Props> = ({ sessionId, currentUserId, canManage }) =
     if (member.avatarUrl) {
       return <img src={member.avatarUrl} alt={member.name} style={{ width: 36, height: 36, borderRadius: '50%' }} />;
     }
+    const nice = displayName({ name: member.name, email: '' });
     return (
       <div
         style={{
@@ -90,7 +92,7 @@ const MembersList: React.FC<Props> = ({ sessionId, currentUserId, canManage }) =
           fontWeight: 600
         }}
       >
-        {member.name.charAt(0).toUpperCase()}
+        {nice.charAt(0).toUpperCase()}
       </div>
     );
   };
@@ -104,7 +106,9 @@ const MembersList: React.FC<Props> = ({ sessionId, currentUserId, canManage }) =
       {error && (
         <div style={{ color: 'tomato', fontSize: 13 }}>
           {error}
-          <button onClick={load} style={{ marginLeft: 8 }}>Повторить</button>
+          <button onClick={load} className="btn btn-ghost" style={{ marginLeft: 8 }}>
+            Повторить
+          </button>
         </div>
       )}
       {loading ? (
@@ -129,7 +133,9 @@ const MembersList: React.FC<Props> = ({ sessionId, currentUserId, canManage }) =
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
                   {renderAvatar(member)}
                   <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-                    <strong style={{ whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>{member.name}</strong>
+                    <strong style={{ whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>
+                      {member.name.includes('@') ? displayName({ name: member.name, email: member.name }) : member.name}
+                    </strong>
                     <small style={{ color: '#94a3b8' }}>{new Date(member.joinedAt).toLocaleDateString()}</small>
                   </div>
                 </div>
@@ -153,7 +159,7 @@ const MembersList: React.FC<Props> = ({ sessionId, currentUserId, canManage }) =
                     <button
                       onClick={() => handleRemove(member)}
                       disabled={pendingRemove === member.userId}
-                      style={{ color: '#dc2626' }}
+                      className="btn btn-ghost danger"
                     >
                       Удалить
                     </button>

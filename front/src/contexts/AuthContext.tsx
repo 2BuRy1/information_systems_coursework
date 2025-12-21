@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { AuthTokens, UserProfile } from '../types';
-import { exchangeOAuth, getOAuthUrl, loadProfile } from '../services/api';
+import { exchangeOAuth, getOAuthUrl, loadProfile, updateProfile } from '../services/api';
 
 interface AuthContextValue {
   user: UserProfile | null;
@@ -8,6 +8,7 @@ interface AuthContextValue {
   loading: boolean;
   startOAuth: (provider: 'github' | 'google') => Promise<void>;
   finishOAuth: (provider: 'github' | 'google', code: string, state: string, redirectUri: string) => Promise<void>;
+  patchProfile: (payload: Partial<{ name: string; avatarUrl: string }>) => Promise<UserProfile | null>;
   logout: () => void;
 }
 
@@ -56,9 +57,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.removeItem(storageKey);
   }, []);
 
+  const patchProfile = useCallback(
+    async (payload: Partial<{ name: string; avatarUrl: string }>) => {
+      if (!tokens) return null;
+      const updated = await updateProfile(tokens, payload);
+      setUser(updated);
+      return updated;
+    },
+    [tokens]
+  );
+
   const value = useMemo<AuthContextValue>(
-    () => ({ user, tokens, loading, startOAuth, finishOAuth, logout }),
-    [user, tokens, loading, startOAuth, finishOAuth, logout]
+    () => ({ user, tokens, loading, startOAuth, finishOAuth, patchProfile, logout }),
+    [user, tokens, loading, startOAuth, finishOAuth, patchProfile, logout]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
