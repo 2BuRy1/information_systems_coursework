@@ -51,7 +51,10 @@ const PublicSessionPage = () => {
       <div className="card">
         <h2>{data.name}</h2>
         <p>Владелец: {data.ownerName}</p>
-        <p>Срок действия ссылки: {new Date(data.expiresAt).toLocaleString()}</p>
+        <p>
+          Срок действия ссылки:{" "}
+          {data.expiresAt ? new Date(data.expiresAt).toLocaleString() : "не ограничен"}
+        </p>
         <pre
           style={{
             whiteSpace: "pre-wrap",
