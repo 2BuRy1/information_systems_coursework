@@ -5,5 +5,5 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import ru.itmo.codetogether.model.OAuthCredentialsEntity;
 
 public interface OAuthCredentialsRepository extends JpaRepository<OAuthCredentialsEntity, Long> {
-    List<OAuthCredentialsEntity> findByUser_Id(Long userId);
+  List<OAuthCredentialsEntity> findByUser_Id(Long userId);
 }

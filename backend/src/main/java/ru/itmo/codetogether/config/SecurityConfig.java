@@ -17,23 +17,27 @@ import ru.itmo.codetogether.security.TokenAuthenticationFilter;
 @EnableMethodSecurity
 public class SecurityConfig {
 
-    @Bean
-    public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder();
-    }
+  @Bean
+  public PasswordEncoder passwordEncoder() {
+    return new BCryptPasswordEncoder();
+  }
 
-    @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http, TokenAuthenticationFilter filter) throws Exception {
-        http.csrf(AbstractHttpConfigurer::disable)
-                .sessionManagement(configurer -> configurer.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .authorizeHttpRequests(auth -> auth.requestMatchers("/oauth/**", "/public/**", "/ws/**", "/error")
-                        .permitAll()
-                        .anyRequest()
-                        .authenticated())
-                .httpBasic(AbstractHttpConfigurer::disable)
-                .formLogin(AbstractHttpConfigurer::disable)
-                .addFilterBefore(filter, UsernamePasswordAuthenticationFilter.class)
-                .cors(Customizer.withDefaults());
-        return http.build();
-    }
+  @Bean
+  public SecurityFilterChain securityFilterChain(
+      HttpSecurity http, TokenAuthenticationFilter filter) throws Exception {
+    http.csrf(AbstractHttpConfigurer::disable)
+        .sessionManagement(
+            configurer -> configurer.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+        .authorizeHttpRequests(
+            auth ->
+                auth.requestMatchers("/oauth/**", "/public/**", "/ws/**", "/error")
+                    .permitAll()
+                    .anyRequest()
+                    .authenticated())
+        .httpBasic(AbstractHttpConfigurer::disable)
+        .formLogin(AbstractHttpConfigurer::disable)
+        .addFilterBefore(filter, UsernamePasswordAuthenticationFilter.class)
+        .cors(Customizer.withDefaults());
+    return http.build();
+  }
 }

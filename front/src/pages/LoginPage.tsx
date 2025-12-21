@@ -1,5 +1,5 @@
-import { useAuth } from '../contexts/AuthContext';
-import './LoginPage.css';
+import { useAuth } from "../contexts/AuthContext";
+import "./LoginPage.css";
 
 const LoginPage = () => {
   const { startOAuth } = useAuth();
@@ -10,8 +10,12 @@ const LoginPage = () => {
         <h1>CodeTogether</h1>
         <p>Подключитесь через OAuth и получайте доступ к доскам совместного редактирования.</p>
         <div className="login-buttons">
-          <button onClick={() => startOAuth('github')} className="primary">Войти через GitHub</button>
-          <button onClick={() => startOAuth('google')} className="secondary">Войти через Google</button>
+          <button type="button" onClick={() => startOAuth("github")} className="primary">
+            Войти через GitHub
+          </button>
+          <button type="button" onClick={() => startOAuth("google")} className="secondary">
+            Войти через Google
+          </button>
         </div>
       </div>
     </div>

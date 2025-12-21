@@ -20,28 +20,28 @@ import lombok.Setter;
 @Table(name = "document_snapshot")
 public class DocumentSnapshotEntity {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+  @Id
+  @GeneratedValue(strategy = GenerationType.IDENTITY)
+  private Long id;
 
-    @Setter
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "document_id", nullable = false)
-    private DocumentEntity document;
+  @Setter
+  @ManyToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "document_id", nullable = false)
+  private DocumentEntity document;
 
-    @Setter
-    @Column(nullable = false)
-    private Integer version;
+  @Setter
+  @Column(nullable = false)
+  private Integer version;
 
-    @Setter
-    @Column(name = "content_text", nullable = false)
-    private String contentText;
+  @Setter
+  @Column(name = "content_text", nullable = false)
+  private String contentText;
 
-    @Setter
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", nullable = false)
-    private UserEntity user;
+  @Setter
+  @ManyToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "user_id", nullable = false)
+  private UserEntity user;
 
-    @Column(name = "created_at", nullable = false)
-    private Instant createdAt = Instant.now();
+  @Column(name = "created_at", nullable = false)
+  private Instant createdAt = Instant.now();
 }

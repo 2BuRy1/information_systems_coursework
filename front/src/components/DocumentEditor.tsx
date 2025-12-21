@@ -1,24 +1,30 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import Editor, { OnMount } from '@monaco-editor/react';
-import SockJS from 'sockjs-client';
-import { Client } from '@stomp/stompjs';
-import type { Monaco } from '@monaco-editor/react';
+import Editor, { type OnMount } from "@monaco-editor/react";
+import type { Monaco } from "@monaco-editor/react";
+import { Client } from "@stomp/stompjs";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import SockJS from "sockjs-client";
+import { useAuth } from "../contexts/AuthContext";
 import {
   appendOperations,
+  clearCursor,
+  clearHighlight,
+  fetchPresence,
   loadDocument,
   loadMembers,
   loadOperations,
-  fetchPresence,
   updateCursor,
   updateHighlight,
-  clearCursor,
-  clearHighlight
-} from '../services/api';
-import { DocumentState, OperationAck, OperationRequest, SessionMember, SessionPresence } from '../types';
-import { CrdtOperation, CrdtSequence } from '../services/crdt';
-import { useAuth } from '../contexts/AuthContext';
-import { toMonacoLanguage } from '../utils/languages';
-import { setupMonaco } from '../utils/monacoSetup';
+} from "../services/api";
+import { type CrdtOperation, CrdtSequence } from "../services/crdt";
+import type {
+  DocumentState,
+  OperationAck,
+  OperationRequest,
+  SessionMember,
+  SessionPresence,
+} from "../types";
+import { toMonacoLanguage } from "../utils/languages";
+import { setupMonaco } from "../utils/monacoSetup";
 
 interface Props {
   sessionId: number;
@@ -26,22 +32,22 @@ interface Props {
 }
 
 interface PendingBatch {
-  operations: OperationRequest['operations'];
+  operations: OperationRequest["operations"];
   tempOperations: CrdtOperation[];
 }
 
 const DocumentEditor: React.FC<Props> = ({ sessionId, language }) => {
   const { tokens, user } = useAuth();
   const [documentState, setDocumentState] = useState<DocumentState | null>(null);
-  const [content, setContent] = useState('');
+  const [content, setContent] = useState("");
   const [loading, setLoading] = useState(true);
   const editorRef = useRef<Parameters<OnMount>[0]>();
   const monacoRef = useRef<Monaco | null>(null);
   const clientRef = useRef<Client | null>(null);
   const sequenceRef = useRef<CrdtSequence>(new CrdtSequence());
   const versionRef = useRef(0);
-  const contentRef = useRef('');
-  const pendingTextRef = useRef('');
+  const contentRef = useRef("");
+  const pendingTextRef = useRef("");
   const pendingBatchesRef = useRef<PendingBatch[]>([]);
   const sendingRef = useRef(false);
   const appliedOperationIdsRef = useRef<Set<number>>(new Set());
@@ -59,10 +65,10 @@ const DocumentEditor: React.FC<Props> = ({ sessionId, language }) => {
   const siteId = useMemo(() => user?.id ?? Math.floor(Math.random() * 100000), [user]);
   const cursorColor = useMemo(() => {
     if (!user?.id) {
-      return '#34d399';
+      return "#34d399";
     }
     const hash = Math.abs(user.id * 2654435761);
-    return `#${(hash & 0xffffff).toString(16).padStart(6, '0')}`;
+    return `#${(hash & 0xffffff).toString(16).padStart(6, "0")}`;
   }, [user?.id]);
 
   const editorLanguage = useMemo(() => toMonacoLanguage(language), [language]);
@@ -108,7 +114,7 @@ const DocumentEditor: React.FC<Props> = ({ sessionId, language }) => {
     try {
       const [doc, ops] = await Promise.all([
         loadDocument(tokens, sessionId),
-        loadOperations(tokens, sessionId, 0)
+        loadOperations(tokens, sessionId, 0),
       ]);
       if (!mountedRef.current) return;
       const sequence = new CrdtSequence();
@@ -122,7 +128,7 @@ const DocumentEditor: React.FC<Props> = ({ sessionId, language }) => {
       setContent(initialText);
       setDocumentState({ ...doc, content: initialText });
     } catch (error) {
-      console.error('Не удалось загрузить документ', error);
+      console.error("Не удалось загрузить документ", error);
     } finally {
       if (mountedRef.current) {
         setLoading(false);
@@ -139,7 +145,9 @@ const DocumentEditor: React.FC<Props> = ({ sessionId, language }) => {
     if (!tokens) return;
     loadMembers(tokens, sessionId).then((members: SessionMember[]) => {
       const map = new Map<number, string>();
-      members.forEach((member) => map.set(member.userId, member.name));
+      for (const member of members) {
+        map.set(member.userId, member.name);
+      }
       memberMapRef.current = map;
     });
   }, [sessionId, tokens]);
@@ -152,28 +160,30 @@ const DocumentEditor: React.FC<Props> = ({ sessionId, language }) => {
     sendingRef.current = true;
     const payload: OperationRequest = {
       baseVersion: versionRef.current,
-      operations: batch.operations
+      operations: batch.operations,
     };
     appendOperations(tokens, sessionId, payload)
       .then((ack) => {
         versionRef.current = ack.appliedVersion ?? versionRef.current;
-        batch.tempOperations.forEach((tempOp, index) => {
+        for (const [index, tempOp] of batch.tempOperations.entries()) {
           const actual = ack.operations[index];
           if (!actual) {
-            return;
+            continue;
           }
-          if (tempOp.operationType === 'insert') {
+          if (tempOp.operationType === "insert") {
             sequenceRef.current.confirmLocalInsert(tempOp.id, actual);
           }
           appliedOperationIdsRef.current.add(actual.id);
-        });
+        }
         setDocumentState((prev) =>
-          prev ? { ...prev, version: versionRef.current, content: sequenceRef.current.text() } : prev
+          prev
+            ? { ...prev, version: versionRef.current, content: sequenceRef.current.text() }
+            : prev,
         );
         pendingBatchesRef.current.shift();
       })
       .catch((error) => {
-        console.error('Не удалось применить операции', error);
+        console.error("Не удалось применить операции", error);
         pendingBatchesRef.current = [];
         resetState();
       })
@@ -185,46 +195,51 @@ const DocumentEditor: React.FC<Props> = ({ sessionId, language }) => {
       });
   }, [resetState, sessionId, tokens]);
 
-  const applyRemoteAck = useCallback((ack: OperationAck) => {
-    if (!ack.operations?.length) {
-      return;
-    }
-    if (user?.id && ack.operations.every((operation) => operation.userId === user.id)) {
-      return;
-    }
-    const sequence = sequenceRef.current;
-    let changed = false;
-    ack.operations.forEach((operation) => {
-      if (appliedOperationIdsRef.current.has(operation.id)) {
+  const applyRemoteAck = useCallback(
+    (ack: OperationAck) => {
+      if (!ack.operations?.length) {
         return;
       }
-      sequence.apply(operation);
-      appliedOperationIdsRef.current.add(operation.id);
-      changed = true;
-    });
-    if (!changed) {
-      return;
-    }
-    versionRef.current = Math.max(versionRef.current, ack.appliedVersion ?? versionRef.current);
-    const nextText = sequence.text();
-    contentRef.current = nextText;
-    pendingTextRef.current = nextText;
-    setContent(nextText);
-    setDocumentState((prev) => (prev ? { ...prev, version: versionRef.current, content: nextText } : prev));
-  }, [user?.id]);
+      if (user?.id && ack.operations.every((operation) => operation.userId === user.id)) {
+        return;
+      }
+      const sequence = sequenceRef.current;
+      let changed = false;
+      for (const operation of ack.operations) {
+        if (appliedOperationIdsRef.current.has(operation.id)) {
+          continue;
+        }
+        sequence.apply(operation);
+        appliedOperationIdsRef.current.add(operation.id);
+        changed = true;
+      }
+      if (!changed) {
+        return;
+      }
+      versionRef.current = Math.max(versionRef.current, ack.appliedVersion ?? versionRef.current);
+      const nextText = sequence.text();
+      contentRef.current = nextText;
+      pendingTextRef.current = nextText;
+      setContent(nextText);
+      setDocumentState((prev) =>
+        prev ? { ...prev, version: versionRef.current, content: nextText } : prev,
+      );
+    },
+    [user?.id],
+  );
 
   const socketUrl = useMemo(() => {
     if (import.meta.env.DEV) {
-      return 'http://localhost:5173/v1/ws';
+      return "http://localhost:5173/v1/ws";
     }
-    return '/v1/ws';
+    return "/v1/ws";
   }, []);
 
   useEffect(() => {
     if (!tokens) return;
     const client = new Client({
       webSocketFactory: () => new SockJS(socketUrl),
-      reconnectDelay: 5000
+      reconnectDelay: 5000,
     });
     client.onConnect = () => {
       client.subscribe(`/topic/sessions/${sessionId}/document`, (message) => {
@@ -232,7 +247,7 @@ const DocumentEditor: React.FC<Props> = ({ sessionId, language }) => {
           const ack: OperationAck = JSON.parse(message.body);
           applyRemoteAck(ack);
         } catch (error) {
-          console.error('Не удалось обработать уведомление', error);
+          console.error("Не удалось обработать уведомление", error);
         }
       });
     };
@@ -258,7 +273,7 @@ const DocumentEditor: React.FC<Props> = ({ sessionId, language }) => {
         updateCursor(tokens, sessionId, {
           line: lastCursorRef.current.line,
           col: lastCursorRef.current.col,
-          color: cursorColor
+          color: cursorColor,
         }).catch(() => {});
       }, 200);
     });
@@ -279,7 +294,7 @@ const DocumentEditor: React.FC<Props> = ({ sessionId, language }) => {
           endLine: selection.endLineNumber - 1,
           startCol: selection.startColumn - 1,
           endCol: selection.endColumn - 1,
-          color: cursorColor
+          color: cursorColor,
         }).catch(() => {});
       }, 200);
     });
@@ -291,7 +306,7 @@ const DocumentEditor: React.FC<Props> = ({ sessionId, language }) => {
   };
 
   const handleChange = (value?: string) => {
-    const nextValue = value ?? '';
+    const nextValue = value ?? "";
     pendingTextRef.current = nextValue;
     setContent(nextValue);
     if (!tokens || !documentState) {
@@ -305,26 +320,26 @@ const DocumentEditor: React.FC<Props> = ({ sessionId, language }) => {
     const { start, endOld, endNew } = diffRange(previous, nextValue);
     const removed = previous.slice(start, endOld);
     const inserted = nextValue.slice(start, endNew);
-    const operations: OperationRequest['operations'] = [];
+    const operations: OperationRequest["operations"] = [];
     const tempOperations: CrdtOperation[] = [];
     const baseVersion = versionRef.current;
     const timestamp = new Date().toISOString();
 
     if (removed.length) {
       const anchors = sequence.anchorsAt(start);
-      const deleteInput: OperationRequest['operations'][number] = {
-        operationType: 'delete',
+      const deleteInput: OperationRequest["operations"][number] = {
+        operationType: "delete",
         nodeCounter: nextNodeCounter(),
         nodeSite: siteId,
         leftNode: anchors.leftNode ?? undefined,
         rightNode: anchors.rightNode ?? undefined,
-        value: removed
+        value: removed,
       };
       operations.push(deleteInput);
       const tempOperation: CrdtOperation = {
         id: tempIdRef.current--,
         documentId: documentState.id,
-        operationType: 'delete',
+        operationType: "delete",
         nodeCounter: deleteInput.nodeCounter,
         nodeSite: deleteInput.nodeSite,
         leftNode: deleteInput.leftNode ?? null,
@@ -333,7 +348,7 @@ const DocumentEditor: React.FC<Props> = ({ sessionId, language }) => {
         color: null,
         version: baseVersion,
         userId: user?.id ?? 0,
-        createdAt: timestamp
+        createdAt: timestamp,
       };
       sequence.apply(tempOperation);
       tempOperations.push(tempOperation);
@@ -343,20 +358,20 @@ const DocumentEditor: React.FC<Props> = ({ sessionId, language }) => {
       let offset = start;
       for (const char of inserted) {
         const anchors = sequence.anchorsAt(offset);
-        const insertInput: OperationRequest['operations'][number] = {
-          operationType: 'insert',
+        const insertInput: OperationRequest["operations"][number] = {
+          operationType: "insert",
           nodeCounter: nextNodeCounter(),
           nodeSite: siteId,
           leftNode: anchors.leftNode ?? undefined,
           rightNode: anchors.rightNode ?? undefined,
           value: char,
-          color: '#34d399'
+          color: "#34d399",
         };
         operations.push(insertInput);
         const tempOperation: CrdtOperation = {
           id: tempIdRef.current--,
           documentId: documentState.id,
-          operationType: 'insert',
+          operationType: "insert",
           nodeCounter: insertInput.nodeCounter,
           nodeSite: insertInput.nodeSite,
           leftNode: insertInput.leftNode ?? null,
@@ -365,7 +380,7 @@ const DocumentEditor: React.FC<Props> = ({ sessionId, language }) => {
           color: insertInput.color,
           version: baseVersion,
           userId: user?.id ?? 0,
-          createdAt: timestamp
+          createdAt: timestamp,
         };
         sequence.apply(tempOperation);
         tempOperations.push(tempOperation);
@@ -380,7 +395,7 @@ const DocumentEditor: React.FC<Props> = ({ sessionId, language }) => {
     contentRef.current = sequence.text();
     pendingBatchesRef.current.push({
       operations,
-      tempOperations
+      tempOperations,
     });
     if (!sendingRef.current) {
       sendNextBatch();
@@ -391,8 +406,8 @@ const DocumentEditor: React.FC<Props> = ({ sessionId, language }) => {
     if (styleSheetRef.current) {
       return styleSheetRef.current;
     }
-    const element = document.createElement('style');
-    element.setAttribute('data-remote-presence', 'true');
+    const element = document.createElement("style");
+    element.setAttribute("data-remote-presence", "true");
     document.head.appendChild(element);
     styleSheetRef.current = element.sheet ?? null;
     return styleSheetRef.current;
@@ -402,13 +417,13 @@ const DocumentEditor: React.FC<Props> = ({ sessionId, language }) => {
     if (!color) {
       return `rgba(249, 115, 22, ${alpha})`;
     }
-    if (color.startsWith('#') && (color.length === 7 || color.length === 4)) {
-      let hex = color.replace('#', '');
+    if (color.startsWith("#") && (color.length === 7 || color.length === 4)) {
+      let hex = color.replace("#", "");
       if (hex.length === 3) {
         hex = hex
-          .split('')
+          .split("")
           .map((char) => char + char)
-          .join('');
+          .join("");
       }
       const parsed = Number.parseInt(hex, 16);
       const r = (parsed >> 16) & 255;
@@ -420,7 +435,7 @@ const DocumentEditor: React.FC<Props> = ({ sessionId, language }) => {
   }, []);
 
   const ensureColorClass = useCallback(
-    (className: string, color: string | undefined, type: 'cursor' | 'highlight') => {
+    (className: string, color: string | undefined, type: "cursor" | "highlight") => {
       const sheet = ensureStyleSheet();
       if (!sheet) {
         return;
@@ -430,20 +445,20 @@ const DocumentEditor: React.FC<Props> = ({ sessionId, language }) => {
         return;
       }
       generatedClassesRef.current.add(key);
-      const shade = color || '#f97316';
-      if (type === 'cursor') {
+      const shade = color || "#f97316";
+      if (type === "cursor") {
         sheet.insertRule(
           `.${className} { border-left: 2px solid ${shade}; margin-left: -1px; }`,
-          sheet.cssRules.length
+          sheet.cssRules.length,
         );
       } else {
         sheet.insertRule(
           `.${className} { background-color: ${colorWithAlpha(shade, 0.25)}; }`,
-          sheet.cssRules.length
+          sheet.cssRules.length,
         );
       }
     },
-    [colorWithAlpha, ensureStyleSheet]
+    [colorWithAlpha, ensureStyleSheet],
   );
 
   const clearPresenceDecorations = useCallback(() => {
@@ -453,7 +468,10 @@ const DocumentEditor: React.FC<Props> = ({ sessionId, language }) => {
       cursorDecorationsRef.current = editor.deltaDecorations(cursorDecorationsRef.current, []);
     }
     if (highlightDecorationsRef.current.length) {
-      highlightDecorationsRef.current = editor.deltaDecorations(highlightDecorationsRef.current, []);
+      highlightDecorationsRef.current = editor.deltaDecorations(
+        highlightDecorationsRef.current,
+        [],
+      );
     }
   }, []);
 
@@ -468,47 +486,50 @@ const DocumentEditor: React.FC<Props> = ({ sessionId, language }) => {
         .filter((cursor) => cursor.userId !== user?.id)
         .map((cursor) => {
           const className = `remote-cursor-${cursor.userId}`;
-          ensureColorClass(className, cursor.color, 'cursor');
+          ensureColorClass(className, cursor.color, "cursor");
           const label = memberMapRef.current.get(cursor.userId) ?? `Участник ${cursor.userId}`;
           return {
             range: new monaco.Range(
               cursor.line + 1,
               cursor.col + 1,
               cursor.line + 1,
-              cursor.col + 1
+              cursor.col + 1,
             ),
             options: {
               className,
               hoverMessage: { value: `**${label}**` },
-              stickiness: monaco.editor.TrackedRangeStickiness.NeverGrowsWhenTypingAtEdges
-            }
+              stickiness: monaco.editor.TrackedRangeStickiness.NeverGrowsWhenTypingAtEdges,
+            },
           };
         });
-      cursorDecorationsRef.current = editor.deltaDecorations(cursorDecorationsRef.current, cursorDecorations);
+      cursorDecorationsRef.current = editor.deltaDecorations(
+        cursorDecorationsRef.current,
+        cursorDecorations,
+      );
 
       const highlightDecorations = presence.highlights
         .filter((highlight) => highlight.userId !== user?.id)
         .map((highlight) => {
           const className = `remote-highlight-${highlight.userId}`;
-          ensureColorClass(className, highlight.color, 'highlight');
+          ensureColorClass(className, highlight.color, "highlight");
           return {
             range: new monaco.Range(
               highlight.startLine + 1,
               highlight.startCol + 1,
               highlight.endLine + 1,
-              highlight.endCol + 1
+              highlight.endCol + 1,
             ),
             options: {
-              className
-            }
+              className,
+            },
           };
         });
       highlightDecorationsRef.current = editor.deltaDecorations(
         highlightDecorationsRef.current,
-        highlightDecorations
+        highlightDecorations,
       );
     },
-    [ensureColorClass, user?.id]
+    [ensureColorClass, user?.id],
   );
 
   useEffect(() => {
@@ -537,8 +558,8 @@ const DocumentEditor: React.FC<Props> = ({ sessionId, language }) => {
   }
 
   return (
-    <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+    <div className="card" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      <div style={{ display: "flex", justifyContent: "space-between" }}>
         <h3>Документ</h3>
         <span>Версия: {documentState?.version ?? versionRef.current}</span>
       </div>

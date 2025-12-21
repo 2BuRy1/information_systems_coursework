@@ -1,20 +1,27 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import { AuthTokens, UserProfile } from '../types';
-import { exchangeOAuth, getOAuthUrl, loadProfile, updateProfile } from '../services/api';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { exchangeOAuth, getOAuthUrl, loadProfile, updateProfile } from "../services/api";
+import type { AuthTokens, UserProfile } from "../types";
 
 interface AuthContextValue {
   user: UserProfile | null;
   tokens: AuthTokens | null;
   loading: boolean;
-  startOAuth: (provider: 'github' | 'google') => Promise<void>;
-  finishOAuth: (provider: 'github' | 'google', code: string, state: string, redirectUri: string) => Promise<void>;
-  patchProfile: (payload: Partial<{ name: string; avatarUrl: string }>) => Promise<UserProfile | null>;
+  startOAuth: (provider: "github" | "google") => Promise<void>;
+  finishOAuth: (
+    provider: "github" | "google",
+    code: string,
+    state: string,
+    redirectUri: string,
+  ) => Promise<void>;
+  patchProfile: (
+    payload: Partial<{ name: string; avatarUrl: string }>,
+  ) => Promise<UserProfile | null>;
   logout: () => void;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
-const storageKey = 'codetogether-auth';
+const storageKey = "codetogether-auth";
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [tokens, setTokens] = useState<AuthTokens | null>(() => {
@@ -36,19 +43,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       .finally(() => setLoading(false));
   }, [tokens]);
 
-  const startOAuth = useCallback(async (provider: 'github' | 'google') => {
+  const startOAuth = useCallback(async (provider: "github" | "google") => {
     const { url } = await getOAuthUrl(provider);
     window.location.href = url;
   }, []);
 
   const finishOAuth = useCallback(
-    async (provider: 'github' | 'google', code: string, state: string, redirectUri: string) => {
+    async (provider: "github" | "google", code: string, state: string, redirectUri: string) => {
       const response = await exchangeOAuth(provider, { code, state, redirectUri });
       setTokens(response.tokens);
       localStorage.setItem(storageKey, JSON.stringify(response.tokens));
       setUser(response.user);
     },
-    []
+    [],
   );
 
   const logout = useCallback(() => {
@@ -64,12 +71,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(updated);
       return updated;
     },
-    [tokens]
+    [tokens],
   );
 
   const value = useMemo<AuthContextValue>(
     () => ({ user, tokens, loading, startOAuth, finishOAuth, patchProfile, logout }),
-    [user, tokens, loading, startOAuth, finishOAuth, patchProfile, logout]
+    [user, tokens, loading, startOAuth, finishOAuth, patchProfile, logout],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
@@ -78,7 +85,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 export const useAuth = (): AuthContextValue => {
   const ctx = useContext(AuthContext);
   if (!ctx) {
-    throw new Error('AuthContext is not available');
+    throw new Error("AuthContext is not available");
   }
   return ctx;
 };

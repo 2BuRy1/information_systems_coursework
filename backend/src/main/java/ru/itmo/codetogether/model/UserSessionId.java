@@ -15,9 +15,9 @@ import lombok.NoArgsConstructor;
 @Embeddable
 public class UserSessionId implements Serializable {
 
-    @Column(name = "session_id")
-    private Long sessionId;
+  @Column(name = "session_id")
+  private Long sessionId;
 
-    @Column(name = "user_id")
-    private Long userId;
+  @Column(name = "user_id")
+  private Long userId;
 }

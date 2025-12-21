@@ -17,7 +17,7 @@ export interface SessionSummary {
   name: string;
   language?: string;
   ownerId: number;
-  role: 'owner' | 'editor' | 'viewer';
+  role: "owner" | "editor" | "viewer";
   updatedAt: string;
 }
 
@@ -25,6 +25,15 @@ export interface SessionDetails extends SessionSummary {
   link: string;
   linkExpiresAt: string;
   stats?: DocumentStats;
+}
+
+export interface PublicSessionView {
+  sessionId: number;
+  name: string;
+  language: string;
+  ownerName: string;
+  expiresAt?: string | null;
+  document: DocumentState;
 }
 
 export interface DocumentState {
@@ -49,7 +58,7 @@ export interface Task {
   id: number;
   sessionId: number;
   text: string;
-  status: 'open' | 'in_progress' | 'done';
+  status: "open" | "in_progress" | "done";
   userId: number;
   metadata?: Record<string, string>;
   createdAt: string;
@@ -94,7 +103,7 @@ export interface SessionPresence {
 export interface OperationRequest {
   baseVersion: number;
   operations: Array<{
-    operationType: 'insert' | 'delete' | 'retain';
+    operationType: "insert" | "delete" | "retain";
     nodeCounter: number;
     nodeSite: number;
     leftNode?: number | null;
@@ -109,7 +118,7 @@ export interface OperationAck {
   operations: Array<{
     id: number;
     documentId: number;
-    operationType: 'insert' | 'delete';
+    operationType: "insert" | "delete";
     nodeCounter: number;
     nodeSite: number;
     leftNode?: number | null;
@@ -125,7 +134,7 @@ export interface OperationAck {
 export interface OperationsResponse {
   fromVersion: number;
   toVersion: number;
-  operations: OperationAck['operations'];
+  operations: OperationAck["operations"];
 }
 
 export interface InviteLink {

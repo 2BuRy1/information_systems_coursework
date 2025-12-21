@@ -2,6 +2,7 @@ package ru.itmo.codetogether.controller;
 
 import jakarta.validation.Valid;
 import java.util.List;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -12,7 +13,6 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import lombok.RequiredArgsConstructor;
 import ru.itmo.codetogether.dto.task.Task;
 import ru.itmo.codetogether.dto.task.TaskRequest;
 import ru.itmo.codetogether.dto.task.TaskUpdateRequest;
@@ -25,42 +25,42 @@ import ru.itmo.codetogether.service.TaskService;
 @RequiredArgsConstructor
 public class TaskController {
 
-    private final TaskService taskService;
-    private final SessionService sessionService;
+  private final TaskService taskService;
+  private final SessionService sessionService;
 
-    @GetMapping
-    public List<Task> list(@AuthenticationPrincipal UserEntity user, @PathVariable Long sessionId) {
-        sessionService.ensureMember(sessionId, user.getId());
-        return taskService.listTasks(sessionId);
-    }
+  @GetMapping
+  public List<Task> list(@AuthenticationPrincipal UserEntity user, @PathVariable Long sessionId) {
+    sessionService.ensureMember(sessionId, user.getId());
+    return taskService.listTasks(sessionId);
+  }
 
-    @PostMapping
-    public ResponseEntity<Task> create(
-            @AuthenticationPrincipal UserEntity user,
-            @PathVariable Long sessionId,
-            @Valid @RequestBody TaskRequest request) {
-        sessionService.ensureEditor(sessionId, user.getId());
-        Task task = taskService.createTask(sessionId, user.getId(), request);
-        return ResponseEntity.status(201).body(task);
-    }
+  @PostMapping
+  public ResponseEntity<Task> create(
+      @AuthenticationPrincipal UserEntity user,
+      @PathVariable Long sessionId,
+      @Valid @RequestBody TaskRequest request) {
+    sessionService.ensureEditor(sessionId, user.getId());
+    Task task = taskService.createTask(sessionId, user.getId(), request);
+    return ResponseEntity.status(201).body(task);
+  }
 
-    @PatchMapping("/{taskId}")
-    public Task update(
-            @AuthenticationPrincipal UserEntity user,
-            @PathVariable Long sessionId,
-            @PathVariable Long taskId,
-            @Valid @RequestBody TaskUpdateRequest request) {
-        sessionService.ensureEditor(sessionId, user.getId());
-        return taskService.updateTask(sessionId, taskId, request);
-    }
+  @PatchMapping("/{taskId}")
+  public Task update(
+      @AuthenticationPrincipal UserEntity user,
+      @PathVariable Long sessionId,
+      @PathVariable Long taskId,
+      @Valid @RequestBody TaskUpdateRequest request) {
+    sessionService.ensureEditor(sessionId, user.getId());
+    return taskService.updateTask(sessionId, taskId, request);
+  }
 
-    @DeleteMapping("/{taskId}")
-    public ResponseEntity<Void> delete(
-            @AuthenticationPrincipal UserEntity user,
-            @PathVariable Long sessionId,
-            @PathVariable Long taskId) {
-        sessionService.ensureEditor(sessionId, user.getId());
-        taskService.deleteTask(sessionId, taskId);
-        return ResponseEntity.noContent().build();
-    }
+  @DeleteMapping("/{taskId}")
+  public ResponseEntity<Void> delete(
+      @AuthenticationPrincipal UserEntity user,
+      @PathVariable Long sessionId,
+      @PathVariable Long taskId) {
+    sessionService.ensureEditor(sessionId, user.getId());
+    taskService.deleteTask(sessionId, taskId);
+    return ResponseEntity.noContent().build();
+  }
 }

@@ -4,5 +4,5 @@ import org.springframework.security.oauth2.client.registration.ClientRegistratio
 
 public interface OAuthProviderClient {
 
-    OAuthUser exchangeCode(ClientRegistration registration, String code, String redirectUri);
+  OAuthUser exchangeCode(ClientRegistration registration, String code, String redirectUri);
 }

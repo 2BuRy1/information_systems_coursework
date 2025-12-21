@@ -6,5 +6,5 @@ import ru.itmo.codetogether.model.CursorStateEntity;
 import ru.itmo.codetogether.model.CursorStateId;
 
 public interface CursorStateRepository extends JpaRepository<CursorStateEntity, CursorStateId> {
-    List<CursorStateEntity> findBySession_Id(Long sessionId);
+  List<CursorStateEntity> findBySession_Id(Long sessionId);
 }

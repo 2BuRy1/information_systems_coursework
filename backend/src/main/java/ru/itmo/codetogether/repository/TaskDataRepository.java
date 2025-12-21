@@ -6,5 +6,5 @@ import ru.itmo.codetogether.model.TaskDataEntity;
 import ru.itmo.codetogether.model.TaskEntity;
 
 public interface TaskDataRepository extends JpaRepository<TaskDataEntity, Long> {
-    Optional<TaskDataEntity> findByTask(TaskEntity task);
+  Optional<TaskDataEntity> findByTask(TaskEntity task);
 }

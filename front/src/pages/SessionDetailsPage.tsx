@@ -1,14 +1,14 @@
-import { useEffect, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
-import DocumentEditor from '../components/DocumentEditor';
-import MembersList from '../components/MembersList';
-import PresencePanel from '../components/PresencePanel';
-import TaskBoard from '../components/TaskBoard';
-import { createInvite, loadSession } from '../services/api';
-import { SessionDetails } from '../types';
-import { useAuth } from '../contexts/AuthContext';
-import AppShell from '../components/AppShell';
-import CopyField from '../components/CopyField';
+import { useEffect, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import AppShell from "../components/AppShell";
+import CopyField from "../components/CopyField";
+import DocumentEditor from "../components/DocumentEditor";
+import MembersList from "../components/MembersList";
+import PresencePanel from "../components/PresencePanel";
+import TaskBoard from "../components/TaskBoard";
+import { useAuth } from "../contexts/AuthContext";
+import { createInvite, loadSession } from "../services/api";
+import type { SessionDetails } from "../types";
 
 const SessionDetailsPage = () => {
   const { sessionId } = useParams();
@@ -33,7 +33,7 @@ const SessionDetailsPage = () => {
   }
 
   const publicUrl = `${window.location.origin}/public/${session.link}`;
-  const canRenewInvite = session.role === 'owner';
+  const canRenewInvite = session.role === "owner";
 
   const handleRenewInvite = async () => {
     if (!tokens) return;
@@ -52,19 +52,19 @@ const SessionDetailsPage = () => {
       title={session.name}
       subtitle={session.language ? `Язык: ${session.language}` : undefined}
       actions={
-        <button type="button" className="btn btn-ghost" onClick={() => navigate('/sessions')}>
+        <button type="button" className="btn btn-ghost" onClick={() => navigate("/sessions")}>
           К списку
         </button>
       }
     >
-      <section className="card" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <section className="card" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
         <CopyField
           label="Ссылка для гостей"
           value={publicUrl}
           hint={`Действует до: ${new Date(session.linkExpiresAt).toLocaleString()}`}
         />
         {canRenewInvite && (
-          <div style={{ display: 'flex', gap: 10, alignItems: 'end', flexWrap: 'wrap' }}>
+          <div style={{ display: "flex", gap: 10, alignItems: "end", flexWrap: "wrap" }}>
             <label className="field" style={{ margin: 0, minWidth: 220 }}>
               <span className="field-label">Срок действия (мин)</span>
               <select
@@ -79,8 +79,13 @@ const SessionDetailsPage = () => {
                 <option value={1440}>1440 (сутки)</option>
               </select>
             </label>
-            <button type="button" className="btn btn-primary" onClick={handleRenewInvite} disabled={renewing}>
-              {renewing ? 'Обновляем…' : 'Сгенерировать новую ссылку'}
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={handleRenewInvite}
+              disabled={renewing}
+            >
+              {renewing ? "Обновляем…" : "Сгенерировать новую ссылку"}
             </button>
           </div>
         )}
@@ -89,7 +94,11 @@ const SessionDetailsPage = () => {
       <div className="board-grid">
         <DocumentEditor sessionId={numericId} language={session.language} />
         <div className="board-side">
-          <MembersList sessionId={numericId} currentUserId={user?.id} canManage={session.role === 'owner'} />
+          <MembersList
+            sessionId={numericId}
+            currentUserId={user?.id}
+            canManage={session.role === "owner"}
+          />
           <PresencePanel sessionId={numericId} />
         </div>
       </div>

@@ -1,31 +1,36 @@
-import {
+import type {
   AuthTokens,
   DocumentState,
+  InviteLink,
   OperationAck,
   OperationRequest,
   OperationsResponse,
+  PublicSessionView,
   SessionDetails,
-  SessionSummary,
-  SessionPresence,
   SessionMember,
+  SessionPresence,
+  SessionSummary,
   Task,
   UserProfile,
-  InviteLink
-} from '../types';
+} from "../types";
 
-const API_BASE = '/v1';
+const API_BASE = "/v1";
 
-async function request<T>(path: string, options: RequestInit = {}, tokens?: AuthTokens | null): Promise<T> {
+async function request<T>(
+  path: string,
+  options: RequestInit = {},
+  tokens?: AuthTokens | null,
+): Promise<T> {
   const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-    ...((options.headers as Record<string, string> | undefined) || {})
+    "Content-Type": "application/json",
+    ...((options.headers as Record<string, string> | undefined) || {}),
   };
   if (tokens?.accessToken) {
     headers.Authorization = `Bearer ${tokens.accessToken}`;
   }
   const response = await fetch(`${API_BASE}${path}`, {
     ...options,
-    headers
+    headers,
   });
   if (response.status === 204) {
     return undefined as T;
@@ -37,61 +42,63 @@ async function request<T>(path: string, options: RequestInit = {}, tokens?: Auth
   return (await response.json()) as T;
 }
 
-export async function getOAuthUrl(provider: 'github' | 'google'): Promise<{ url: string; state: string }> {
+export async function getOAuthUrl(
+  provider: "github" | "google",
+): Promise<{ url: string; state: string }> {
   return request(`/oauth/${provider}/url`);
 }
 
 export async function exchangeOAuth(
-  provider: 'github' | 'google',
-  payload: { code: string; state: string; redirectUri: string }
+  provider: "github" | "google",
+  payload: { code: string; state: string; redirectUri: string },
 ): Promise<{ tokens: AuthTokens; user: UserProfile }> {
   return request(`/oauth/${provider}/exchange`, {
-    method: 'POST',
-    body: JSON.stringify(payload)
+    method: "POST",
+    body: JSON.stringify(payload),
   });
 }
 
 export async function loadProfile(tokens: AuthTokens): Promise<UserProfile> {
-  return request('/users/me', {}, tokens);
+  return request("/users/me", {}, tokens);
 }
 
 export async function updateProfile(
   tokens: AuthTokens,
-  payload: Partial<{ name: string; avatarUrl: string }>
+  payload: Partial<{ name: string; avatarUrl: string }>,
 ): Promise<UserProfile> {
   return request(
-    '/users/me',
+    "/users/me",
     {
-      method: 'PATCH',
-      body: JSON.stringify(payload)
+      method: "PATCH",
+      body: JSON.stringify(payload),
     },
-    tokens
+    tokens,
   );
 }
 
 export async function listSessions(
   tokens: AuthTokens,
-  params: { role?: string; cursor?: number; limit?: number } = {}
+  params: { role?: string; cursor?: number; limit?: number } = {},
 ): Promise<{ items: SessionSummary[]; nextCursor?: number | null }> {
   const query = new URLSearchParams();
-  if (params.role) query.set('role', params.role);
-  if (params.limit) query.set('limit', String(params.limit));
-  if (params.cursor) query.set('cursor', String(params.cursor));
-  const suffix = query.toString() ? `?${query.toString()}` : '';
+  if (params.role) query.set("role", params.role);
+  if (params.limit) query.set("limit", String(params.limit));
+  if (params.cursor) query.set("cursor", String(params.cursor));
+  const suffix = query.toString() ? `?${query.toString()}` : "";
   return request(`/sessions${suffix}`, {}, tokens);
 }
 
 export async function createSession(
   tokens: AuthTokens,
-  payload: { name: string; language: string }
+  payload: { name: string; language: string },
 ): Promise<SessionDetails> {
   return request(
-    '/sessions',
+    "/sessions",
     {
-      method: 'POST',
-      body: JSON.stringify(payload)
+      method: "POST",
+      body: JSON.stringify(payload),
     },
-    tokens
+    tokens,
   );
 }
 
@@ -107,20 +114,24 @@ export async function updateMemberRole(
   tokens: AuthTokens,
   sessionId: number,
   userId: number,
-  role: string
+  role: string,
 ): Promise<SessionMember> {
   return request(
     `/sessions/${sessionId}/members/${userId}`,
     {
-      method: 'PATCH',
-      body: JSON.stringify({ role })
+      method: "PATCH",
+      body: JSON.stringify({ role }),
     },
-    tokens
+    tokens,
   );
 }
 
-export async function removeMember(tokens: AuthTokens, sessionId: number, userId: number): Promise<void> {
-  await request(`/sessions/${sessionId}/members/${userId}`, { method: 'DELETE' }, tokens);
+export async function removeMember(
+  tokens: AuthTokens,
+  sessionId: number,
+  userId: number,
+): Promise<void> {
+  await request(`/sessions/${sessionId}/members/${userId}`, { method: "DELETE" }, tokens);
 }
 
 export async function loadTasks(tokens: AuthTokens, sessionId: number): Promise<Task[]> {
@@ -130,15 +141,15 @@ export async function loadTasks(tokens: AuthTokens, sessionId: number): Promise<
 export async function createTask(
   tokens: AuthTokens,
   sessionId: number,
-  payload: { text: string; metadata?: Record<string, string> }
+  payload: { text: string; metadata?: Record<string, string> },
 ): Promise<Task> {
   return request(
     `/sessions/${sessionId}/tasks`,
     {
-      method: 'POST',
-      body: JSON.stringify(payload)
+      method: "POST",
+      body: JSON.stringify(payload),
     },
-    tokens
+    tokens,
   );
 }
 
@@ -146,20 +157,24 @@ export async function updateTask(
   tokens: AuthTokens,
   sessionId: number,
   taskId: number,
-  payload: Partial<{ text: string; status: string; metadata: Record<string, string> }>
+  payload: Partial<{ text: string; status: string; metadata: Record<string, string> }>,
 ): Promise<Task> {
   return request(
     `/sessions/${sessionId}/tasks/${taskId}`,
     {
-      method: 'PATCH',
-      body: JSON.stringify(payload)
+      method: "PATCH",
+      body: JSON.stringify(payload),
     },
-    tokens
+    tokens,
   );
 }
 
-export async function deleteTask(tokens: AuthTokens, sessionId: number, taskId: number): Promise<void> {
-  await request(`/sessions/${sessionId}/tasks/${taskId}`, { method: 'DELETE' }, tokens);
+export async function deleteTask(
+  tokens: AuthTokens,
+  sessionId: number,
+  taskId: number,
+): Promise<void> {
+  await request(`/sessions/${sessionId}/tasks/${taskId}`, { method: "DELETE" }, tokens);
 }
 
 export async function loadDocument(tokens: AuthTokens, sessionId: number): Promise<DocumentState> {
@@ -169,83 +184,97 @@ export async function loadDocument(tokens: AuthTokens, sessionId: number): Promi
 export async function loadOperations(
   tokens: AuthTokens,
   sessionId: number,
-  sinceVersion = 0
+  sinceVersion = 0,
 ): Promise<OperationsResponse> {
-  return request(`/sessions/${sessionId}/document/operations?sinceVersion=${Math.max(0, sinceVersion)}`, {}, tokens);
+  return request(
+    `/sessions/${sessionId}/document/operations?sinceVersion=${Math.max(0, sinceVersion)}`,
+    {},
+    tokens,
+  );
 }
 
-export async function fetchPresence(tokens: AuthTokens, sessionId: number): Promise<SessionPresence> {
+export async function fetchPresence(
+  tokens: AuthTokens,
+  sessionId: number,
+): Promise<SessionPresence> {
   return request(`/sessions/${sessionId}/presence`, {}, tokens);
 }
 
 export async function appendOperations(
   tokens: AuthTokens,
   sessionId: number,
-  body: OperationRequest
+  body: OperationRequest,
 ): Promise<OperationAck> {
   return request(
     `/sessions/${sessionId}/document/operations`,
     {
-      method: 'POST',
-      body: JSON.stringify(body)
+      method: "POST",
+      body: JSON.stringify(body),
     },
-    tokens
+    tokens,
   );
 }
 
 export async function updateCursor(
   tokens: AuthTokens,
   sessionId: number,
-  payload: { line: number; col: number; color?: string }
+  payload: { line: number; col: number; color?: string },
 ): Promise<void> {
   await request(
     `/sessions/${sessionId}/presence/cursor`,
     {
-      method: 'PUT',
-      body: JSON.stringify(payload)
+      method: "PUT",
+      body: JSON.stringify(payload),
     },
-    tokens
+    tokens,
   );
 }
 
 export async function clearCursor(tokens: AuthTokens, sessionId: number): Promise<void> {
-  await request(`/sessions/${sessionId}/presence/cursor`, { method: 'DELETE' }, tokens);
+  await request(`/sessions/${sessionId}/presence/cursor`, { method: "DELETE" }, tokens);
 }
 
 export async function updateHighlight(
   tokens: AuthTokens,
   sessionId: number,
-  payload: { startLine: number; endLine: number; startCol: number; endCol: number; color?: string }
+  payload: { startLine: number; endLine: number; startCol: number; endCol: number; color?: string },
 ): Promise<void> {
   await request(
     `/sessions/${sessionId}/presence/highlight`,
     {
-      method: 'PUT',
-      body: JSON.stringify(payload)
+      method: "PUT",
+      body: JSON.stringify(payload),
     },
-    tokens
+    tokens,
   );
 }
 
 export async function clearHighlight(tokens: AuthTokens, sessionId: number): Promise<void> {
-  await request(`/sessions/${sessionId}/presence/highlight`, { method: 'DELETE' }, tokens);
+  await request(`/sessions/${sessionId}/presence/highlight`, { method: "DELETE" }, tokens);
 }
 
-export async function loadPublicSession(token: string) {
+export async function loadPublicSession(token: string): Promise<PublicSessionView> {
   return request(`/public/sessions/${token}`);
 }
 
-export async function acceptInvite(token: AuthTokens, inviteToken: string): Promise<SessionDetails> {
-  return request(`/invites/${inviteToken}/accept`, { method: 'POST' }, token);
+export async function acceptInvite(
+  token: AuthTokens,
+  inviteToken: string,
+): Promise<SessionDetails> {
+  return request(`/invites/${inviteToken}/accept`, { method: "POST" }, token);
 }
 
-export async function createInvite(tokens: AuthTokens, sessionId: number, expiresInMinutes: number): Promise<InviteLink> {
+export async function createInvite(
+  tokens: AuthTokens,
+  sessionId: number,
+  expiresInMinutes: number,
+): Promise<InviteLink> {
   return request(
     `/sessions/${sessionId}/invites`,
     {
-      method: 'POST',
-      body: JSON.stringify({ expiresInMinutes })
+      method: "POST",
+      body: JSON.stringify({ expiresInMinutes }),
     },
-    tokens
+    tokens,
   );
 }

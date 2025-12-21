@@ -1,6 +1,6 @@
-import { OperationAck } from '../types';
+import type { OperationAck } from "../types";
 
-export type CrdtOperation = OperationAck['operations'][number];
+export type CrdtOperation = OperationAck["operations"][number];
 
 export interface AnchorPair {
   leftNode: number | null;
@@ -14,7 +14,7 @@ class InsertNode {
 
   constructor(operation: CrdtOperation) {
     this.operation = operation;
-    this.value = operation.value ?? '';
+    this.value = operation.value ?? "";
     this.tombstone = false;
   }
 }
@@ -24,16 +24,18 @@ export class CrdtSequence {
 
   constructor(initial?: CrdtOperation[]) {
     if (initial) {
-      initial.forEach((operation) => this.apply(operation));
+      for (const operation of initial) {
+        this.apply(operation);
+      }
     }
   }
 
   apply(operation: CrdtOperation) {
     switch (operation.operationType) {
-      case 'insert':
+      case "insert":
         this.insert(operation);
         break;
-      case 'delete':
+      case "delete":
         this.delete(operation);
         break;
       default:
@@ -42,7 +44,9 @@ export class CrdtSequence {
   }
 
   applyAll(operations: CrdtOperation[]) {
-    operations.forEach((operation) => this.apply(operation));
+    for (const operation of operations) {
+      this.apply(operation);
+    }
   }
 
   confirmLocalInsert(tempId: number, actual: CrdtOperation) {
@@ -64,7 +68,7 @@ export class CrdtSequence {
     return this.nodes
       .filter((node) => !node.tombstone)
       .map((node) => node.value)
-      .join('');
+      .join("");
   }
 
   anchorsAt(offset: number): AnchorPair {
@@ -85,26 +89,29 @@ export class CrdtSequence {
         const rightConfirmed = confirmedId ?? this.nextConfirmedId(i + 1);
         return {
           leftNode: previousConfirmed,
-          rightNode: rightConfirmed
+          rightNode: rightConfirmed,
         };
       }
       if (clamped < nextCursor) {
         const rightConfirmed = this.nextConfirmedId(i + 1);
         return {
           leftNode: confirmedId ?? previousConfirmed,
-          rightNode: rightConfirmed
+          rightNode: rightConfirmed,
         };
       }
       cursor = nextCursor;
     }
     return {
       leftNode: previousConfirmed,
-      rightNode: null
+      rightNode: null,
     };
   }
 
   length() {
-    return this.nodes.reduce((total, node) => (node.tombstone ? total : total + node.value.length), 0);
+    return this.nodes.reduce(
+      (total, node) => (node.tombstone ? total : total + node.value.length),
+      0,
+    );
   }
 
   reset(operations: CrdtOperation[]) {
@@ -210,7 +217,7 @@ export class CrdtSequence {
 
   private confirmedId(node: InsertNode) {
     const id = node.operation.id;
-    return typeof id === 'number' && id > 0 ? id : null;
+    return typeof id === "number" && id > 0 ? id : null;
   }
 
   private nextConfirmedId(fromIndex: number) {

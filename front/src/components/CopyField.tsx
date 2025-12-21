@@ -1,17 +1,18 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import type React from "react";
+import { useCallback, useMemo, useState } from "react";
 
 async function copyText(text: string) {
   if (navigator.clipboard?.writeText) {
     await navigator.clipboard.writeText(text);
     return;
   }
-  const input = document.createElement('textarea');
+  const input = document.createElement("textarea");
   input.value = text;
-  input.style.position = 'fixed';
-  input.style.left = '-9999px';
+  input.style.position = "fixed";
+  input.style.left = "-9999px";
   document.body.appendChild(input);
   input.select();
-  document.execCommand('copy');
+  document.execCommand("copy");
   document.body.removeChild(input);
 }
 
@@ -40,9 +41,19 @@ const CopyField: React.FC<Props> = ({ label, value, hint }) => {
     <div className="copy-field">
       {label && <div className="copy-label">{label}</div>}
       <div className="copy-row">
-        <input className="input" readOnly value={formatted} onFocus={(e) => e.currentTarget.select()} />
-        <button type="button" className="btn btn-primary" onClick={handleCopy} disabled={!formatted}>
-          {copied ? 'Скопировано' : 'Копировать'}
+        <input
+          className="input"
+          readOnly
+          value={formatted}
+          onFocus={(e) => e.currentTarget.select()}
+        />
+        <button
+          type="button"
+          className="btn btn-primary"
+          onClick={handleCopy}
+          disabled={!formatted}
+        >
+          {copied ? "Скопировано" : "Копировать"}
         </button>
       </div>
       {hint && <div className="copy-hint">{hint}</div>}
@@ -51,4 +62,3 @@ const CopyField: React.FC<Props> = ({ label, value, hint }) => {
 };
 
 export default CopyField;
-

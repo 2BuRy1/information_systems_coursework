@@ -14,31 +14,34 @@ import ru.itmo.codetogether.repository.SessionRepository;
 
 @Component
 @RequiredArgsConstructor
-@ConditionalOnProperty(prefix = "codetogether.invites", name = "auto-rotate-expired", havingValue = "true")
+@ConditionalOnProperty(
+    prefix = "codetogether.invites",
+    name = "auto-rotate-expired",
+    havingValue = "true")
 public class InviteLinkRotationJob {
 
-    private final SessionRepository sessionRepository;
+  private final SessionRepository sessionRepository;
 
-    @Value("${codetogether.invites.rotate-ttl-minutes:60}")
-    private int rotateTtlMinutes;
+  @Value("${codetogether.invites.rotate-ttl-minutes:60}")
+  private int rotateTtlMinutes;
 
-    @Scheduled(fixedDelayString = "${codetogether.invites.rotate-interval-ms:60000}")
-    public void rotateExpiredLinks() {
-        Instant now = Instant.now();
-        List<SessionEntity> expired = sessionRepository.findByLinkExpiresAtBefore(now);
-        if (expired.isEmpty()) {
-            return;
-        }
-        Instant nextExpiresAt = now.plus(Duration.ofMinutes(Math.max(5, rotateTtlMinutes)));
-        expired.forEach(session -> {
-            session.setLink(generateToken());
-            session.setLinkExpiresAt(nextExpiresAt);
+  @Scheduled(fixedDelayString = "${codetogether.invites.rotate-interval-ms:60000}")
+  public void rotateExpiredLinks() {
+    Instant now = Instant.now();
+    List<SessionEntity> expired = sessionRepository.findByLinkExpiresAtBefore(now);
+    if (expired.isEmpty()) {
+      return;
+    }
+    Instant nextExpiresAt = now.plus(Duration.ofMinutes(Math.max(5, rotateTtlMinutes)));
+    expired.forEach(
+        session -> {
+          session.setLink(generateToken());
+          session.setLinkExpiresAt(nextExpiresAt);
         });
-        sessionRepository.saveAll(expired);
-    }
+    sessionRepository.saveAll(expired);
+  }
 
-    private String generateToken() {
-        return UUID.randomUUID().toString().replace("-", "");
-    }
+  private String generateToken() {
+    return UUID.randomUUID().toString().replace("-", "");
+  }
 }
-

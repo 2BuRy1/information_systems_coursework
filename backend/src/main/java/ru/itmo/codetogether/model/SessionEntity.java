@@ -23,53 +23,52 @@ import lombok.Setter;
 @Table(name = "session")
 public class SessionEntity {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+  @Id
+  @GeneratedValue(strategy = GenerationType.IDENTITY)
+  private Long id;
 
-    @Column(nullable = false)
-    private String name;
+  @Column(nullable = false)
+  private String name;
 
-    private String language;
+  private String language;
 
-    @Setter
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", nullable = false)
-    private UserEntity owner;
+  @Setter
+  @ManyToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "user_id", nullable = false)
+  private UserEntity owner;
 
-    @Setter
-    @Column(nullable = false, unique = true)
-    private String link;
+  @Setter
+  @Column(nullable = false, unique = true)
+  private String link;
 
-    @Setter
-    @Column(name = "link_expires_at", nullable = false)
-    private Instant linkExpiresAt;
+  @Setter
+  @Column(name = "link_expires_at", nullable = false)
+  private Instant linkExpiresAt;
 
-    @Transient
-    private Instant updatedAt = Instant.now();
+  @Transient private Instant updatedAt = Instant.now();
 
-    @Setter
-    @OneToOne(mappedBy = "session", fetch = FetchType.LAZY)
-    private DocumentEntity document;
+  @Setter
+  @OneToOne(mappedBy = "session", fetch = FetchType.LAZY)
+  private DocumentEntity document;
 
-    public void setName(String name) {
-        this.name = name;
-        this.updatedAt = Instant.now();
+  public void setName(String name) {
+    this.name = name;
+    this.updatedAt = Instant.now();
+  }
+
+  public void setLanguage(String language) {
+    this.language = language;
+    this.updatedAt = Instant.now();
+  }
+
+  public void touch() {
+    this.updatedAt = Instant.now();
+  }
+
+  @PostLoad
+  public void hydrate() {
+    if (this.updatedAt == null) {
+      this.updatedAt = Instant.now();
     }
-
-    public void setLanguage(String language) {
-        this.language = language;
-        this.updatedAt = Instant.now();
-    }
-
-    public void touch() {
-        this.updatedAt = Instant.now();
-    }
-
-    @PostLoad
-    public void hydrate() {
-        if (this.updatedAt == null) {
-            this.updatedAt = Instant.now();
-        }
-    }
+  }
 }

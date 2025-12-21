@@ -19,16 +19,16 @@ import lombok.Setter;
 @Table(name = "task_data")
 public class TaskDataEntity {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+  @Id
+  @GeneratedValue(strategy = GenerationType.IDENTITY)
+  private Long id;
 
-    @Setter
-    @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "task_id", nullable = false)
-    private TaskEntity task;
+  @Setter
+  @OneToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "task_id", nullable = false)
+  private TaskEntity task;
 
-    @Setter
-    @Column(name = "payload", columnDefinition = "TEXT")
-    private String payloadJson;
+  @Setter
+  @Column(name = "payload", columnDefinition = "TEXT")
+  private String payloadJson;
 }

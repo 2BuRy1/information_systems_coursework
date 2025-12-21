@@ -20,32 +20,32 @@ import lombok.Setter;
 @Table(name = "oauth_credentials")
 public class OAuthCredentialsEntity {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+  @Id
+  @GeneratedValue(strategy = GenerationType.IDENTITY)
+  private Long id;
 
-    @Setter
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", nullable = false)
-    private UserEntity user;
+  @Setter
+  @ManyToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "user_id", nullable = false)
+  private UserEntity user;
 
-    @Setter
-    @Column(nullable = false)
-    private String provider;
+  @Setter
+  @Column(nullable = false)
+  private String provider;
 
-    @Setter
-    @Column(name = "access_token", length = 2048)
-    private String accessToken;
+  @Setter
+  @Column(name = "access_token", length = 2048)
+  private String accessToken;
 
-    @Setter
-    @Column(name = "refresh_token", length = 2048)
-    private String refreshToken;
+  @Setter
+  @Column(name = "refresh_token", length = 2048)
+  private String refreshToken;
 
-    @Setter
-    @Column(length = 1024)
-    private String scopes;
+  @Setter
+  @Column(length = 1024)
+  private String scopes;
 
-    @Setter
-    @Column(name = "token_expires_at")
-    private Instant tokenExpiresAt;
+  @Setter
+  @Column(name = "token_expires_at")
+  private Instant tokenExpiresAt;
 }

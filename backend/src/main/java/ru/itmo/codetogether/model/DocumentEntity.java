@@ -19,24 +19,24 @@ import lombok.Setter;
 @Table(name = "document")
 public class DocumentEntity {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+  @Id
+  @GeneratedValue(strategy = GenerationType.IDENTITY)
+  private Long id;
 
-    @Setter
-    @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "session_id", nullable = false, unique = true)
-    private SessionEntity session;
+  @Setter
+  @OneToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "session_id", nullable = false, unique = true)
+  private SessionEntity session;
 
-    @Setter
-    @Column(nullable = false)
-    private Integer version = 0;
+  @Setter
+  @Column(nullable = false)
+  private Integer version = 0;
 
-    @Setter
-    @Column(name = "content_text", nullable = false)
-    private String contentText = "";
+  @Setter
+  @Column(name = "content_text", nullable = false)
+  private String contentText = "";
 
-    public void incrementVersion() {
-        this.version = this.version + 1;
-    }
+  public void incrementVersion() {
+    this.version = this.version + 1;
+  }
 }

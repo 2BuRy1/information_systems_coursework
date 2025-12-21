@@ -19,38 +19,36 @@ import lombok.Setter;
 @Table(name = "cursor_state")
 public class CursorStateEntity {
 
-    @Setter
-    @EmbeddedId
-    private CursorStateId id;
+  @Setter @EmbeddedId private CursorStateId id;
 
-    @Setter
-    @ManyToOne(fetch = FetchType.LAZY)
-    @MapsId("sessionId")
-    @JoinColumn(name = "session_id")
-    private SessionEntity session;
+  @Setter
+  @ManyToOne(fetch = FetchType.LAZY)
+  @MapsId("sessionId")
+  @JoinColumn(name = "session_id")
+  private SessionEntity session;
 
-    @Setter
-    @ManyToOne(fetch = FetchType.LAZY)
-    @MapsId("userId")
-    @JoinColumn(name = "user_id")
-    private UserEntity user;
+  @Setter
+  @ManyToOne(fetch = FetchType.LAZY)
+  @MapsId("userId")
+  @JoinColumn(name = "user_id")
+  private UserEntity user;
 
-    @Setter
-    @Column(name = "line", nullable = false)
-    private Integer line;
+  @Setter
+  @Column(name = "line", nullable = false)
+  private Integer line;
 
-    @Setter
-    @Column(name = "col", nullable = false)
-    private Integer col;
+  @Setter
+  @Column(name = "col", nullable = false)
+  private Integer col;
 
-    @Setter
-    @Column(name = "color", nullable = false)
-    private String color;
+  @Setter
+  @Column(name = "color", nullable = false)
+  private String color;
 
-    @Column(name = "updated_at", nullable = false)
-    private Instant updatedAt = Instant.now();
+  @Column(name = "updated_at", nullable = false)
+  private Instant updatedAt = Instant.now();
 
-    public void touch() {
-        this.updatedAt = Instant.now();
-    }
+  public void touch() {
+    this.updatedAt = Instant.now();
+  }
 }

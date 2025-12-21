@@ -21,51 +21,51 @@ import lombok.Setter;
 @Table(name = "task")
 public class TaskEntity {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+  @Id
+  @GeneratedValue(strategy = GenerationType.IDENTITY)
+  private Long id;
 
-    @Setter
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "session_id", nullable = false)
-    private SessionEntity session;
+  @Setter
+  @ManyToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "session_id", nullable = false)
+  private SessionEntity session;
 
-    @Column(nullable = false)
-    private String text;
+  @Column(nullable = false)
+  private String text;
 
-    @Column(name = "status", nullable = false)
-    private TaskStatus status = TaskStatus.OPEN;
+  @Column(name = "status", nullable = false)
+  private TaskStatus status = TaskStatus.OPEN;
 
-    @Setter
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", nullable = false)
-    private UserEntity author;
+  @Setter
+  @ManyToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "user_id", nullable = false)
+  private UserEntity author;
 
-    @OneToOne(mappedBy = "task", fetch = FetchType.LAZY)
-    private TaskDataEntity data;
+  @OneToOne(mappedBy = "task", fetch = FetchType.LAZY)
+  private TaskDataEntity data;
 
-    @Column(name = "created_at", nullable = false)
-    private Instant createdAt = Instant.now();
+  @Column(name = "created_at", nullable = false)
+  private Instant createdAt = Instant.now();
 
-    @Column(name = "updated_at", nullable = false)
-    private Instant updatedAt = Instant.now();
+  @Column(name = "updated_at", nullable = false)
+  private Instant updatedAt = Instant.now();
 
-    public void setText(String text) {
-        this.text = text;
-        touch();
-    }
+  public void setText(String text) {
+    this.text = text;
+    touch();
+  }
 
-    public void setStatus(TaskStatus status) {
-        this.status = status;
-        touch();
-    }
+  public void setStatus(TaskStatus status) {
+    this.status = status;
+    touch();
+  }
 
-    public void setData(TaskDataEntity data) {
-        this.data = data;
-        touch();
-    }
+  public void setData(TaskDataEntity data) {
+    this.data = data;
+    touch();
+  }
 
-    public void touch() {
-        this.updatedAt = Instant.now();
-    }
+  public void touch() {
+    this.updatedAt = Instant.now();
+  }
 }

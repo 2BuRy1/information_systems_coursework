@@ -7,9 +7,9 @@ import ru.itmo.codetogether.model.UserSessionEntity;
 import ru.itmo.codetogether.model.UserSessionId;
 
 public interface UserSessionRepository extends JpaRepository<UserSessionEntity, UserSessionId> {
-    List<UserSessionEntity> findByUser_Id(Long userId);
+  List<UserSessionEntity> findByUser_Id(Long userId);
 
-    List<UserSessionEntity> findBySession_Id(Long sessionId);
+  List<UserSessionEntity> findBySession_Id(Long sessionId);
 
-    Optional<UserSessionEntity> findBySession_IdAndUser_Id(Long sessionId, Long userId);
+  Optional<UserSessionEntity> findBySession_IdAndUser_Id(Long sessionId, Long userId);
 }

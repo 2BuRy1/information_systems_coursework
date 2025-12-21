@@ -18,23 +18,21 @@ import lombok.Setter;
 @Table(name = "user_session")
 public class UserSessionEntity {
 
-    @Setter
-    @EmbeddedId
-    private UserSessionId id;
+  @Setter @EmbeddedId private UserSessionId id;
 
-    @Setter
-    @ManyToOne(fetch = FetchType.LAZY)
-    @MapsId("sessionId")
-    @JoinColumn(name = "session_id")
-    private SessionEntity session;
+  @Setter
+  @ManyToOne(fetch = FetchType.LAZY)
+  @MapsId("sessionId")
+  @JoinColumn(name = "session_id")
+  private SessionEntity session;
 
-    @Setter
-    @ManyToOne(fetch = FetchType.LAZY)
-    @MapsId("userId")
-    @JoinColumn(name = "user_id")
-    private UserEntity user;
+  @Setter
+  @ManyToOne(fetch = FetchType.LAZY)
+  @MapsId("userId")
+  @JoinColumn(name = "user_id")
+  private UserEntity user;
 
-    @Setter
-    @Column(nullable = false)
-    private String role;
+  @Setter
+  @Column(nullable = false)
+  private String role;
 }

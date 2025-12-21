@@ -4,6 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "vite",
+    "lint": "npx --yes @biomejs/biome@1.9.4 check ./src ./vite.config.ts ./index.html",
+    "lint:fix": "npx --yes @biomejs/biome@1.9.4 check --write ./src ./vite.config.ts ./index.html",
     "build": "tsc && vite build",
     "preview": "vite preview"
   },

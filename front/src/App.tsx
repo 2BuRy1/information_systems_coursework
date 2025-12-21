@@ -1,10 +1,10 @@
-import { Navigate, Route, Routes } from 'react-router-dom';
-import { useAuth } from './contexts/AuthContext';
-import LoginPage from './pages/LoginPage';
-import OAuthCallbackPage from './pages/OAuthCallbackPage';
-import SessionsPage from './pages/SessionsPage';
-import SessionDetailsPage from './pages/SessionDetailsPage';
-import PublicSessionPage from './pages/PublicSessionPage';
+import { Navigate, Route, Routes } from "react-router-dom";
+import { useAuth } from "./contexts/AuthContext";
+import LoginPage from "./pages/LoginPage";
+import OAuthCallbackPage from "./pages/OAuthCallbackPage";
+import PublicSessionPage from "./pages/PublicSessionPage";
+import SessionDetailsPage from "./pages/SessionDetailsPage";
+import SessionsPage from "./pages/SessionsPage";
 
 const RequireAuth: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, loading } = useAuth();

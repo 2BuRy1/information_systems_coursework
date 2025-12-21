@@ -1,13 +1,17 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
-import { useAuth } from '../contexts/AuthContext';
-import { displayInitials, displayName } from '../utils/format';
+import type React from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
+import { useAuth } from "../contexts/AuthContext";
+import { displayInitials, displayName } from "../utils/format";
 
-const AVATARS = Array.from({ length: 12 }, (_, index) => `/avatars/av-${String(index + 1).padStart(2, '0')}.svg`);
-const OAUTH_AVATAR_KEY = 'codetogether-oauth-avatar';
+const AVATARS = Array.from(
+  { length: 12 },
+  (_, index) => `/avatars/av-${String(index + 1).padStart(2, "0")}.svg`,
+);
+const OAUTH_AVATAR_KEY = "codetogether-oauth-avatar";
 
 function isCatalogAvatar(url: string) {
-  return url.startsWith('/avatars/');
+  return url.startsWith("/avatars/");
 }
 
 interface AvatarModalProps {
@@ -19,10 +23,17 @@ interface AvatarModalProps {
   busy: boolean;
 }
 
-const AvatarModal: React.FC<AvatarModalProps> = ({ open, onClose, onPick, busy, oauthAvatarUrl, onRestoreOAuth }) => {
+const AvatarModal: React.FC<AvatarModalProps> = ({
+  open,
+  onClose,
+  onPick,
+  busy,
+  oauthAvatarUrl,
+  onRestoreOAuth,
+}) => {
   if (!open) return null;
   return createPortal(
-    <div className="modal-backdrop" role="dialog" aria-modal="true" onMouseDown={onClose}>
+    <dialog className="modal-backdrop" open onMouseDown={onClose}>
       <div className="modal" onMouseDown={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <div>
@@ -70,8 +81,8 @@ const AvatarModal: React.FC<AvatarModalProps> = ({ open, onClose, onPick, busy, 
           </button>
         </div>
       </div>
-    </div>,
-    document.body
+    </dialog>,
+    document.body,
   );
 };
 
@@ -84,7 +95,14 @@ const ProfileMenu: React.FC = () => {
 
   const name = useMemo(() => displayName(user), [user]);
   const initials = useMemo(() => displayInitials(name), [name]);
-  const oauthAvatarUrl = useMemo(() => localStorage.getItem(OAUTH_AVATAR_KEY), [avatarOpen]);
+  const [oauthAvatarUrl, setOauthAvatarUrl] = useState<string | null>(() =>
+    localStorage.getItem(OAUTH_AVATAR_KEY),
+  );
+
+  useEffect(() => {
+    if (!avatarOpen) return;
+    setOauthAvatarUrl(localStorage.getItem(OAUTH_AVATAR_KEY));
+  }, [avatarOpen]);
 
   useEffect(() => {
     const handle = (event: MouseEvent) => {
@@ -94,8 +112,8 @@ const ProfileMenu: React.FC = () => {
         setOpen(false);
       }
     };
-    document.addEventListener('mousedown', handle);
-    return () => document.removeEventListener('mousedown', handle);
+    document.addEventListener("mousedown", handle);
+    return () => document.removeEventListener("mousedown", handle);
   }, []);
 
   const handlePickAvatar = useCallback(
@@ -103,7 +121,7 @@ const ProfileMenu: React.FC = () => {
       if (!user) return;
       setSaving(true);
       try {
-        const current = (user.avatarUrl ?? '').trim();
+        const current = (user.avatarUrl ?? "").trim();
         if (current && !isCatalogAvatar(current) && !localStorage.getItem(OAUTH_AVATAR_KEY)) {
           localStorage.setItem(OAUTH_AVATAR_KEY, current);
         }
@@ -114,7 +132,7 @@ const ProfileMenu: React.FC = () => {
         setSaving(false);
       }
     },
-    [patchProfile, user]
+    [patchProfile, user],
   );
 
   const handleRestoreOAuth = useCallback(
@@ -129,12 +147,17 @@ const ProfileMenu: React.FC = () => {
         setSaving(false);
       }
     },
-    [patchProfile, user]
+    [patchProfile, user],
   );
 
   return (
     <div className="profile" ref={rootRef}>
-      <button type="button" className="profile-button" onClick={() => setOpen((prev) => !prev)} aria-expanded={open}>
+      <button
+        type="button"
+        className="profile-button"
+        onClick={() => setOpen((prev) => !prev)}
+        aria-expanded={open}
+      >
         {user?.avatarUrl ? (
           <img className="avatar" src={user.avatarUrl} alt={name} />
         ) : (

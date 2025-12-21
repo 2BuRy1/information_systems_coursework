@@ -19,46 +19,44 @@ import lombok.Setter;
 @Table(name = "highlight")
 public class HighlightEntity {
 
-    @Setter
-    @EmbeddedId
-    private HighlightId id;
+  @Setter @EmbeddedId private HighlightId id;
 
-    @Setter
-    @ManyToOne(fetch = FetchType.LAZY)
-    @MapsId("sessionId")
-    @JoinColumn(name = "session_id")
-    private SessionEntity session;
+  @Setter
+  @ManyToOne(fetch = FetchType.LAZY)
+  @MapsId("sessionId")
+  @JoinColumn(name = "session_id")
+  private SessionEntity session;
 
-    @Setter
-    @ManyToOne(fetch = FetchType.LAZY)
-    @MapsId("userId")
-    @JoinColumn(name = "user_id")
-    private UserEntity user;
+  @Setter
+  @ManyToOne(fetch = FetchType.LAZY)
+  @MapsId("userId")
+  @JoinColumn(name = "user_id")
+  private UserEntity user;
 
-    @Setter
-    @Column(name = "start_line", nullable = false)
-    private Integer startLine;
+  @Setter
+  @Column(name = "start_line", nullable = false)
+  private Integer startLine;
 
-    @Setter
-    @Column(name = "end_line", nullable = false)
-    private Integer endLine;
+  @Setter
+  @Column(name = "end_line", nullable = false)
+  private Integer endLine;
 
-    @Setter
-    @Column(name = "start_col", nullable = false)
-    private Integer startCol;
+  @Setter
+  @Column(name = "start_col", nullable = false)
+  private Integer startCol;
 
-    @Setter
-    @Column(name = "end_col", nullable = false)
-    private Integer endCol;
+  @Setter
+  @Column(name = "end_col", nullable = false)
+  private Integer endCol;
 
-    @Setter
-    @Column(nullable = false)
-    private String color;
+  @Setter
+  @Column(nullable = false)
+  private String color;
 
-    @Column(name = "updated_at", nullable = false)
-    private Instant updatedAt = Instant.now();
+  @Column(name = "updated_at", nullable = false)
+  private Instant updatedAt = Instant.now();
 
-    public void touch() {
-        this.updatedAt = Instant.now();
-    }
+  public void touch() {
+    this.updatedAt = Instant.now();
+  }
 }

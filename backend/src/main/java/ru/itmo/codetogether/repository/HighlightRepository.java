@@ -6,5 +6,5 @@ import ru.itmo.codetogether.model.HighlightEntity;
 import ru.itmo.codetogether.model.HighlightId;
 
 public interface HighlightRepository extends JpaRepository<HighlightEntity, HighlightId> {
-    List<HighlightEntity> findBySession_Id(Long sessionId);
+  List<HighlightEntity> findBySession_Id(Long sessionId);
 }
