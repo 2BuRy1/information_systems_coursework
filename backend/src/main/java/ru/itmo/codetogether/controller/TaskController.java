@@ -12,45 +12,44 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import ru.itmo.codetogether.dto.TaskDto;
+import lombok.RequiredArgsConstructor;
+import ru.itmo.codetogether.dto.task.Task;
+import ru.itmo.codetogether.dto.task.TaskRequest;
+import ru.itmo.codetogether.dto.task.TaskUpdateRequest;
 import ru.itmo.codetogether.model.UserEntity;
 import ru.itmo.codetogether.service.SessionService;
 import ru.itmo.codetogether.service.TaskService;
 
 @RestController
 @RequestMapping("/sessions/{sessionId}/tasks")
+@RequiredArgsConstructor
 public class TaskController {
 
     private final TaskService taskService;
     private final SessionService sessionService;
 
-    public TaskController(TaskService taskService, SessionService sessionService) {
-        this.taskService = taskService;
-        this.sessionService = sessionService;
-    }
-
     @GetMapping
-    public List<TaskDto.Task> list(@AuthenticationPrincipal UserEntity user, @PathVariable Long sessionId) {
+    public List<Task> list(@AuthenticationPrincipal UserEntity user, @PathVariable Long sessionId) {
         sessionService.ensureMember(sessionId, user.getId());
         return taskService.listTasks(sessionId);
     }
 
     @PostMapping
-    public ResponseEntity<TaskDto.Task> create(
+    public ResponseEntity<Task> create(
             @AuthenticationPrincipal UserEntity user,
             @PathVariable Long sessionId,
-            @Valid @RequestBody TaskDto.TaskRequest request) {
+            @Valid @RequestBody TaskRequest request) {
         sessionService.ensureEditor(sessionId, user.getId());
-        TaskDto.Task task = taskService.createTask(sessionId, user.getId(), request);
+        Task task = taskService.createTask(sessionId, user.getId(), request);
         return ResponseEntity.status(201).body(task);
     }
 
     @PatchMapping("/{taskId}")
-    public TaskDto.Task update(
+    public Task update(
             @AuthenticationPrincipal UserEntity user,
             @PathVariable Long sessionId,
             @PathVariable Long taskId,
-            @Valid @RequestBody TaskDto.TaskUpdateRequest request) {
+            @Valid @RequestBody TaskUpdateRequest request) {
         sessionService.ensureEditor(sessionId, user.getId());
         return taskService.updateTask(sessionId, taskId, request);
     }

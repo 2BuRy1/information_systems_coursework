@@ -7,40 +7,40 @@ import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
-import ru.itmo.codetogether.dto.CommonDto;
+import ru.itmo.codetogether.dto.common.ErrorResponse;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
     @ExceptionHandler(CodeTogetherException.class)
-    public ResponseEntity<CommonDto.ErrorResponse> handleCodeTogether(CodeTogetherException exception) {
+    public ResponseEntity<ErrorResponse> handleCodeTogether(CodeTogetherException exception) {
         return ResponseEntity.status(exception.getStatus())
-                .body(new CommonDto.ErrorResponse(exception.getMessage(), exception.getDetails()));
+                .body(new ErrorResponse(exception.getMessage(), exception.getDetails()));
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<CommonDto.ErrorResponse> handleValidation(MethodArgumentNotValidException exception) {
+    public ResponseEntity<ErrorResponse> handleValidation(MethodArgumentNotValidException exception) {
         FieldError error = exception.getBindingResult().getFieldError();
         String message = error != null ? error.getDefaultMessage() : "Validation error";
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                .body(new CommonDto.ErrorResponse(message, error != null ? error.getField() : null));
+                .body(new ErrorResponse(message, error != null ? error.getField() : null));
     }
 
     @ExceptionHandler(ConstraintViolationException.class)
-    public ResponseEntity<CommonDto.ErrorResponse> handleConstraint(ConstraintViolationException exception) {
+    public ResponseEntity<ErrorResponse> handleConstraint(ConstraintViolationException exception) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                .body(new CommonDto.ErrorResponse("Validation error", exception.getMessage()));
+                .body(new ErrorResponse("Validation error", exception.getMessage()));
     }
 
     @ExceptionHandler(IllegalArgumentException.class)
-    public ResponseEntity<CommonDto.ErrorResponse> handleIllegalArgument(IllegalArgumentException exception) {
+    public ResponseEntity<ErrorResponse> handleIllegalArgument(IllegalArgumentException exception) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                .body(new CommonDto.ErrorResponse("Validation error", exception.getMessage()));
+                .body(new ErrorResponse("Validation error", exception.getMessage()));
     }
 
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<CommonDto.ErrorResponse> handleGeneric(Exception exception) {
+    public ResponseEntity<ErrorResponse> handleGeneric(Exception exception) {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(new CommonDto.ErrorResponse("Internal error", exception.getMessage()));
+                .body(new ErrorResponse("Internal error", exception.getMessage()));
     }
 }

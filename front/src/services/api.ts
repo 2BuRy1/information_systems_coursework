@@ -9,7 +9,8 @@ import {
   SessionPresence,
   SessionMember,
   Task,
-  UserProfile
+  UserProfile,
+  InviteLink
 } from '../types';
 
 const API_BASE = '/v1';
@@ -236,4 +237,15 @@ export async function loadPublicSession(token: string) {
 
 export async function acceptInvite(token: AuthTokens, inviteToken: string): Promise<SessionDetails> {
   return request(`/invites/${inviteToken}/accept`, { method: 'POST' }, token);
+}
+
+export async function createInvite(tokens: AuthTokens, sessionId: number, expiresInMinutes: number): Promise<InviteLink> {
+  return request(
+    `/sessions/${sessionId}/invites`,
+    {
+      method: 'POST',
+      body: JSON.stringify({ expiresInMinutes })
+    },
+    tokens
+  );
 }

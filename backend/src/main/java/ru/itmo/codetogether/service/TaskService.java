@@ -7,7 +7,10 @@ import java.util.Map;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import ru.itmo.codetogether.dto.TaskDto;
+import lombok.RequiredArgsConstructor;
+import ru.itmo.codetogether.dto.task.Task;
+import ru.itmo.codetogether.dto.task.TaskRequest;
+import ru.itmo.codetogether.dto.task.TaskUpdateRequest;
 import ru.itmo.codetogether.exception.CodeTogetherException;
 import ru.itmo.codetogether.model.SessionEntity;
 import ru.itmo.codetogether.model.TaskDataEntity;
@@ -20,31 +23,21 @@ import ru.itmo.codetogether.repository.TaskRepository;
 import ru.itmo.codetogether.repository.UserRepository;
 
 @Service
+@RequiredArgsConstructor
 public class TaskService {
 
     private final TaskRepository taskRepository;
     private final TaskDataRepository taskDataRepository;
     private final SessionRepository sessionRepository;
     private final UserRepository userRepository;
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final ObjectMapper objectMapper;
 
-    public TaskService(
-            TaskRepository taskRepository,
-            TaskDataRepository taskDataRepository,
-            SessionRepository sessionRepository,
-            UserRepository userRepository) {
-        this.taskRepository = taskRepository;
-        this.taskDataRepository = taskDataRepository;
-        this.sessionRepository = sessionRepository;
-        this.userRepository = userRepository;
-    }
-
-    public List<TaskDto.Task> listTasks(Long sessionId) {
+    public List<Task> listTasks(Long sessionId) {
         return taskRepository.findBySession_Id(sessionId).stream().map(this::toDto).toList();
     }
 
     @Transactional
-    public TaskDto.Task createTask(Long sessionId, Long userId, TaskDto.TaskRequest request) {
+    public Task createTask(Long sessionId, Long userId, TaskRequest request) {
         SessionEntity session = sessionRepository
                 .findById(sessionId)
                 .orElseThrow(() -> new CodeTogetherException(HttpStatus.NOT_FOUND, "Доска не найдена"));
@@ -68,7 +61,7 @@ public class TaskService {
     }
 
     @Transactional
-    public TaskDto.Task updateTask(Long sessionId, Long taskId, TaskDto.TaskUpdateRequest request) {
+    public Task updateTask(Long sessionId, Long taskId, TaskUpdateRequest request) {
         TaskEntity task = taskRepository
                 .findById(taskId)
                 .filter(entity -> entity.getSession().getId().equals(sessionId))
@@ -102,12 +95,12 @@ public class TaskService {
         taskRepository.delete(task);
     }
 
-    private TaskDto.Task toDto(TaskEntity entity) {
+    private Task toDto(TaskEntity entity) {
         Map<String, String> metadata = taskDataRepository
                 .findByTask(entity)
                 .map(data -> deserialize(data.getPayloadJson()))
                 .orElse(Map.of());
-        return new TaskDto.Task(
+        return new Task(
                 entity.getId(),
                 entity.getSession().getId(),
                 entity.getText(),

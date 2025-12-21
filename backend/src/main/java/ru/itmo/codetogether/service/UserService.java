@@ -4,19 +4,18 @@ import java.util.Optional;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import ru.itmo.codetogether.dto.UserDto;
+import lombok.RequiredArgsConstructor;
+import ru.itmo.codetogether.dto.user.UserProfile;
+import ru.itmo.codetogether.dto.user.UserUpdateRequest;
 import ru.itmo.codetogether.exception.CodeTogetherException;
 import ru.itmo.codetogether.model.UserEntity;
 import ru.itmo.codetogether.repository.UserRepository;
 
 @Service
+@RequiredArgsConstructor
 public class UserService {
 
     private final UserRepository userRepository;
-
-    public UserService(UserRepository userRepository) {
-        this.userRepository = userRepository;
-    }
 
     public Optional<UserEntity> findByEmail(String email) {
         if (email == null) {
@@ -49,7 +48,7 @@ public class UserService {
     }
 
     @Transactional
-    public UserDto.UserProfile updateProfile(UserEntity user, UserDto.UserUpdateRequest request) {
+    public UserProfile updateProfile(UserEntity user, UserUpdateRequest request) {
         if (request.name() != null && !request.name().isBlank()) {
             user.setName(request.name());
         }
@@ -60,8 +59,8 @@ public class UserService {
         return toProfile(user);
     }
 
-    public UserDto.UserProfile toProfile(UserEntity entity) {
-        return new UserDto.UserProfile(entity.getId(), entity.getName(), entity.getEmail(), entity.getAvatarUrl(), entity.getRole());
+    public UserProfile toProfile(UserEntity entity) {
+        return new UserProfile(entity.getId(), entity.getName(), entity.getEmail(), entity.getAvatarUrl(), entity.getRole());
     }
 
     private String resolveName(String providedName, String email) {

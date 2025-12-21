@@ -4,7 +4,7 @@ import DocumentEditor from '../components/DocumentEditor';
 import MembersList from '../components/MembersList';
 import PresencePanel from '../components/PresencePanel';
 import TaskBoard from '../components/TaskBoard';
-import { loadSession } from '../services/api';
+import { createInvite, loadSession } from '../services/api';
 import { SessionDetails } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import AppShell from '../components/AppShell';
@@ -16,6 +16,8 @@ const SessionDetailsPage = () => {
   const { tokens, user } = useAuth();
   const navigate = useNavigate();
   const [session, setSession] = useState<SessionDetails | null>(null);
+  const [inviteTtlMinutes, setInviteTtlMinutes] = useState(60);
+  const [renewing, setRenewing] = useState(false);
 
   useEffect(() => {
     if (!tokens || Number.isNaN(numericId)) return;
@@ -31,6 +33,19 @@ const SessionDetailsPage = () => {
   }
 
   const publicUrl = `${window.location.origin}/public/${session.link}`;
+  const canRenewInvite = session.role === 'owner';
+
+  const handleRenewInvite = async () => {
+    if (!tokens) return;
+    setRenewing(true);
+    try {
+      await createInvite(tokens, numericId, inviteTtlMinutes);
+      const updated = await loadSession(tokens, numericId);
+      setSession(updated);
+    } finally {
+      setRenewing(false);
+    }
+  };
 
   return (
     <AppShell
@@ -48,10 +63,31 @@ const SessionDetailsPage = () => {
           value={publicUrl}
           hint={`Действует до: ${new Date(session.linkExpiresAt).toLocaleString()}`}
         />
+        {canRenewInvite && (
+          <div style={{ display: 'flex', gap: 10, alignItems: 'end', flexWrap: 'wrap' }}>
+            <label className="field" style={{ margin: 0, minWidth: 220 }}>
+              <span className="field-label">Срок действия (мин)</span>
+              <select
+                className="input"
+                value={inviteTtlMinutes}
+                onChange={(e) => setInviteTtlMinutes(Number(e.target.value))}
+              >
+                <option value={5}>5</option>
+                <option value={30}>30</option>
+                <option value={60}>60</option>
+                <option value={180}>180</option>
+                <option value={1440}>1440 (сутки)</option>
+              </select>
+            </label>
+            <button type="button" className="btn btn-primary" onClick={handleRenewInvite} disabled={renewing}>
+              {renewing ? 'Обновляем…' : 'Сгенерировать новую ссылку'}
+            </button>
+          </div>
+        )}
       </section>
 
       <div className="board-grid">
-        <DocumentEditor sessionId={numericId} />
+        <DocumentEditor sessionId={numericId} language={session.language} />
         <div className="board-side">
           <MembersList sessionId={numericId} currentUserId={user?.id} canManage={session.role === 'owner'} />
           <PresencePanel sessionId={numericId} />

@@ -8,7 +8,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import org.springframework.stereotype.Service;
-import ru.itmo.codetogether.dto.AuthDto;
+import ru.itmo.codetogether.dto.auth.AuthTokens;
 
 @Service
 public class TokenService {
@@ -20,13 +20,13 @@ public class TokenService {
     private final Map<String, TokenRecord> accessTokens = new ConcurrentHashMap<>();
     private final Map<String, TokenRecord> refreshTokens = new ConcurrentHashMap<>();
 
-    public AuthDto.AuthTokens issueTokens(Long userId) {
+    public AuthTokens issueTokens(Long userId) {
         Instant now = Instant.now();
         String access = generateToken();
         String refresh = generateToken();
         accessTokens.put(access, new TokenRecord(userId, now.plus(ACCESS_TTL)));
         refreshTokens.put(refresh, new TokenRecord(userId, now.plus(REFRESH_TTL)));
-        return new AuthDto.AuthTokens(access, refresh, ACCESS_TTL.toSeconds());
+        return new AuthTokens(access, refresh, ACCESS_TTL.toSeconds());
     }
 
     public Optional<Long> resolveAccessToken(String token) {
@@ -46,6 +46,4 @@ public class TokenService {
         secureRandom.nextBytes(bytes);
         return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
     }
-
-    private record TokenRecord(Long userId, Instant expiresAt) {}
 }

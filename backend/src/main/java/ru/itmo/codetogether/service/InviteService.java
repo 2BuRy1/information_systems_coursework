@@ -5,38 +5,38 @@ import java.time.Instant;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
-import ru.itmo.codetogether.dto.DocumentDto;
-import ru.itmo.codetogether.dto.SessionDto;
+import org.springframework.transaction.annotation.Transactional;
+import lombok.RequiredArgsConstructor;
+import ru.itmo.codetogether.dto.document.DocumentState;
+import ru.itmo.codetogether.dto.session.InviteLink;
+import ru.itmo.codetogether.dto.session.PublicSessionView;
+import ru.itmo.codetogether.dto.session.SessionDetails;
 import ru.itmo.codetogether.exception.CodeTogetherException;
 import ru.itmo.codetogether.model.SessionEntity;
 import ru.itmo.codetogether.model.UserEntity;
 
 @Service
+@RequiredArgsConstructor
 public class InviteService {
 
     private final SessionService sessionService;
     private final UserService userService;
     private final DocumentService documentService;
 
-    public InviteService(SessionService sessionService, UserService userService, DocumentService documentService) {
-        this.sessionService = sessionService;
-        this.userService = userService;
-        this.documentService = documentService;
-    }
-
-    public SessionDto.InviteLink createInvite(Long sessionId, int expiresInMinutes) {
+    public InviteLink createInvite(Long sessionId, int expiresInMinutes) {
         SessionEntity session = sessionService.requireSession(sessionId);
         Instant expiresAt = Instant.now().plus(Duration.ofMinutes(expiresInMinutes));
         String token = generateToken();
         sessionService.updateInviteLink(session.getId(), token, expiresAt);
-        return new SessionDto.InviteLink(sessionId, "/public/sessions/" + token, expiresAt);
+        return new InviteLink(sessionId, "/public/sessions/" + token, expiresAt);
     }
 
-    public SessionDto.PublicSessionView getPublicView(String tokenValue) {
+    @Transactional(readOnly = true)
+    public PublicSessionView getPublicView(String tokenValue) {
         SessionEntity session = findSessionByToken(tokenValue);
-        DocumentDto.DocumentState document = documentService.getDocument(session.getId());
+        DocumentState document = documentService.getDocument(session.getId());
         UserEntity owner = userService.findById(session.getOwner().getId()).orElse(null);
-        return new SessionDto.PublicSessionView(
+        return new PublicSessionView(
                 session.getId(),
                 session.getName(),
                 session.getLanguage(),
@@ -45,7 +45,7 @@ public class InviteService {
                 document);
     }
 
-    public SessionDto.SessionDetails acceptInvite(String tokenValue, Long userId) {
+    public SessionDetails acceptInvite(String tokenValue, Long userId) {
         SessionEntity session = findSessionByToken(tokenValue);
         return sessionService.joinByInvite(session.getId(), userId);
     }

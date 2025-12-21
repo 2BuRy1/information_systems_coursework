@@ -8,8 +8,16 @@ import java.util.concurrent.ConcurrentMap;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import ru.itmo.codetogether.dto.CrdtDto;
-import ru.itmo.codetogether.dto.DocumentDto;
+import lombok.RequiredArgsConstructor;
+import ru.itmo.codetogether.dto.document.DocumentSnapshot;
+import ru.itmo.codetogether.dto.document.DocumentState;
+import ru.itmo.codetogether.dto.document.DocumentStats;
+import ru.itmo.codetogether.dto.document.Operation;
+import ru.itmo.codetogether.dto.document.OperationAck;
+import ru.itmo.codetogether.dto.document.OperationInput;
+import ru.itmo.codetogether.dto.document.OperationRequest;
+import ru.itmo.codetogether.dto.document.OperationsResponse;
+import ru.itmo.codetogether.dto.document.SnapshotRequest;
 import ru.itmo.codetogether.exception.CodeTogetherException;
 import ru.itmo.codetogether.model.DocumentEntity;
 import ru.itmo.codetogether.model.DocumentOperationEntity;
@@ -21,6 +29,7 @@ import ru.itmo.codetogether.repository.DocumentSnapshotRepository;
 import ru.itmo.codetogether.repository.UserRepository;
 
 @Service
+@RequiredArgsConstructor
 public class DocumentService {
 
     private final DocumentRepository documentRepository;
@@ -30,23 +39,12 @@ public class DocumentService {
 
     private final ConcurrentMap<Long, CrdtSequence> sequences = new ConcurrentHashMap<>();
 
-    public DocumentService(
-            DocumentRepository documentRepository,
-            DocumentOperationRepository operationRepository,
-            DocumentSnapshotRepository snapshotRepository,
-            UserRepository userRepository) {
-        this.documentRepository = documentRepository;
-        this.operationRepository = operationRepository;
-        this.snapshotRepository = snapshotRepository;
-        this.userRepository = userRepository;
-    }
-
     public void initializeSequence(DocumentEntity document) {
         sequences.put(document.getId(), loadSequence(document));
     }
 
     @Transactional(readOnly = true)
-    public DocumentDto.DocumentState getDocument(Long sessionId) {
+    public DocumentState getDocument(Long sessionId) {
         DocumentEntity document = documentRepository
                 .findBySession_Id(sessionId)
                 .orElseThrow(() -> new CodeTogetherException(HttpStatus.NOT_FOUND, "Документ не найден"));
@@ -54,11 +52,12 @@ public class DocumentService {
             document.getSession().getId();
             document.getSession().getUpdatedAt();
         }
-        return new DocumentDto.DocumentState(
+        return new DocumentState(
                 document.getId(), document.getSession().getId(), document.getVersion(), document.getContentText(), document.getSession().getUpdatedAt());
     }
 
-    public DocumentDto.OperationsResponse getOperations(Long sessionId, Integer sinceVersion) {
+    @Transactional(readOnly = true)
+    public OperationsResponse getOperations(Long sessionId, Integer sinceVersion) {
         DocumentEntity document = documentRepository
                 .findBySession_Id(sessionId)
                 .orElseThrow(() -> new CodeTogetherException(HttpStatus.NOT_FOUND, "Документ не найден"));
@@ -66,16 +65,16 @@ public class DocumentService {
             document.getSession().getId();
         }
         List<DocumentOperationEntity> operations = operationRepository.findByDocumentIdOrderByVersionAsc(document.getId());
-        List<CrdtDto.Operation> ops = operations.stream()
+        List<Operation> ops = operations.stream()
                 .filter(op -> op.getVersion() > sinceVersion)
                 .map(this::toOperation)
                 .toList();
         int toVersion = ops.isEmpty() ? sinceVersion : ops.get(ops.size() - 1).version();
-        return new DocumentDto.OperationsResponse(sinceVersion, toVersion, ops);
+        return new OperationsResponse(sinceVersion, toVersion, ops);
     }
 
     @Transactional
-    public DocumentDto.OperationAck appendOperations(Long sessionId, Long userId, DocumentDto.OperationRequest request) {
+    public OperationAck appendOperations(Long sessionId, Long userId, OperationRequest request) {
         DocumentEntity document = documentRepository
                 .findBySession_Id(sessionId)
                 .orElseThrow(() -> new CodeTogetherException(HttpStatus.NOT_FOUND, "Документ не найден"));
@@ -86,8 +85,8 @@ public class DocumentService {
                 .findById(userId)
                 .orElseThrow(() -> new CodeTogetherException(HttpStatus.NOT_FOUND, "Пользователь не найден"));
         CrdtSequence sequence = sequences.computeIfAbsent(document.getId(), id -> loadSequence(document));
-        List<CrdtDto.Operation> applied = new ArrayList<>();
-        for (CrdtDto.OperationInput input : request.operations()) {
+        List<Operation> applied = new ArrayList<>();
+        for (OperationInput input : request.operations()) {
             DocumentOperationEntity entity = new DocumentOperationEntity();
             entity.setDocument(document);
             entity.setOperationType(input.operationType());
@@ -110,21 +109,22 @@ public class DocumentService {
         }
         document.setContentText(sequence.currentText());
         documentRepository.save(document);
-        return new DocumentDto.OperationAck(document.getVersion(), applied);
+        return new OperationAck(document.getVersion(), applied);
     }
 
-    public List<DocumentDto.DocumentSnapshot> listSnapshots(Long sessionId) {
+    @Transactional(readOnly = true)
+    public List<DocumentSnapshot> listSnapshots(Long sessionId) {
         DocumentEntity document = documentRepository
                 .findBySession_Id(sessionId)
                 .orElseThrow(() -> new CodeTogetherException(HttpStatus.NOT_FOUND, "Документ не найден"));
         return snapshotRepository.findByDocumentIdOrderByVersionDesc(document.getId()).stream()
-                .map(snapshot -> new DocumentDto.DocumentSnapshot(
+                .map(snapshot -> new DocumentSnapshot(
                         snapshot.getId(), snapshot.getDocument().getId(), snapshot.getVersion(), snapshot.getUser().getId(), snapshot.getCreatedAt(), snapshot.getContentText()))
                 .toList();
     }
 
     @Transactional
-    public DocumentDto.DocumentSnapshot saveSnapshot(Long sessionId, Long userId, DocumentDto.SnapshotRequest request) {
+    public DocumentSnapshot saveSnapshot(Long sessionId, Long userId, SnapshotRequest request) {
         DocumentEntity document = documentRepository
                 .findBySession_Id(sessionId)
                 .orElseThrow(() -> new CodeTogetherException(HttpStatus.NOT_FOUND, "Документ не найден"));
@@ -142,11 +142,12 @@ public class DocumentService {
         DocumentSnapshotEntity saved = snapshotRepository.save(snapshot);
         document.setContentText(request.content());
         documentRepository.save(document);
-        return new DocumentDto.DocumentSnapshot(
+        return new DocumentSnapshot(
                 saved.getId(), document.getId(), saved.getVersion(), user.getId(), saved.getCreatedAt(), saved.getContentText());
     }
 
-    public DocumentDto.DocumentStats documentStats(Long sessionId, int activeParticipants) {
+    @Transactional(readOnly = true)
+    public DocumentStats documentStats(Long sessionId, int activeParticipants) {
         DocumentEntity document = documentRepository
                 .findBySession_Id(sessionId)
                 .orElseThrow(() -> new CodeTogetherException(HttpStatus.NOT_FOUND, "Документ не найден"));
@@ -155,7 +156,7 @@ public class DocumentService {
                 .map(DocumentSnapshotEntity::getVersion)
                 .findFirst()
                 .orElse(0);
-        return new DocumentDto.DocumentStats(
+        return new DocumentStats(
                 sessionId,
                 document.getId(),
                 activeParticipants,
@@ -174,8 +175,8 @@ public class DocumentService {
         return sequence;
     }
 
-    private CrdtDto.Operation toOperation(DocumentOperationEntity entity) {
-        return new CrdtDto.Operation(
+    private Operation toOperation(DocumentOperationEntity entity) {
+        return new Operation(
                 entity.getId(),
                 entity.getDocument().getId(),
                 entity.getOperationType(),

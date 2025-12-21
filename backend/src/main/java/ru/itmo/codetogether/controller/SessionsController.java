@@ -13,22 +13,23 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import ru.itmo.codetogether.dto.SessionDto;
+import lombok.RequiredArgsConstructor;
+import ru.itmo.codetogether.dto.session.SessionDetails;
+import ru.itmo.codetogether.dto.session.SessionList;
+import ru.itmo.codetogether.dto.session.SessionRequest;
+import ru.itmo.codetogether.dto.session.SessionUpdateRequest;
 import ru.itmo.codetogether.model.UserEntity;
 import ru.itmo.codetogether.service.SessionService;
 
 @RestController
 @RequestMapping("/sessions")
+@RequiredArgsConstructor
 public class SessionsController {
 
     private final SessionService sessionService;
 
-    public SessionsController(SessionService sessionService) {
-        this.sessionService = sessionService;
-    }
-
     @GetMapping
-    public SessionDto.SessionList list(
+    public SessionList list(
             @AuthenticationPrincipal UserEntity user,
             @RequestParam(required = false) String role,
             @RequestParam(defaultValue = "20") int limit,
@@ -38,22 +39,21 @@ public class SessionsController {
     }
 
     @PostMapping
-    public ResponseEntity<SessionDto.SessionDetails> create(
-            @AuthenticationPrincipal UserEntity user, @Valid @RequestBody SessionDto.SessionRequest request) {
+    public ResponseEntity<SessionDetails> create(
+            @AuthenticationPrincipal UserEntity user, @Valid @RequestBody SessionRequest request) {
         return ResponseEntity.status(201).body(sessionService.createSession(user, request));
     }
 
     @GetMapping("/{sessionId}")
-    public SessionDto.SessionDetails get(
-            @AuthenticationPrincipal UserEntity user, @PathVariable Long sessionId) {
+    public SessionDetails get(@AuthenticationPrincipal UserEntity user, @PathVariable Long sessionId) {
         return sessionService.getSession(sessionId, user.getId());
     }
 
     @PatchMapping("/{sessionId}")
-    public SessionDto.SessionDetails update(
+    public SessionDetails update(
             @AuthenticationPrincipal UserEntity user,
             @PathVariable Long sessionId,
-            @Valid @RequestBody SessionDto.SessionUpdateRequest request) {
+            @Valid @RequestBody SessionUpdateRequest request) {
         return sessionService.updateSession(sessionId, user.getId(), request);
     }
 

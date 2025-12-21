@@ -6,12 +6,19 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.stream.Collectors;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import ru.itmo.codetogether.dto.DocumentDto;
-import ru.itmo.codetogether.dto.SessionDto;
+import ru.itmo.codetogether.dto.document.DocumentStats;
+import ru.itmo.codetogether.dto.session.MemberInviteRequest;
+import ru.itmo.codetogether.dto.session.MemberRoleRequest;
+import ru.itmo.codetogether.dto.session.SessionDetails;
+import ru.itmo.codetogether.dto.session.SessionList;
+import ru.itmo.codetogether.dto.session.SessionMember;
+import ru.itmo.codetogether.dto.session.SessionRequest;
+import ru.itmo.codetogether.dto.session.SessionSummary;
+import ru.itmo.codetogether.dto.session.SessionUpdateRequest;
 import ru.itmo.codetogether.exception.CodeTogetherException;
 import ru.itmo.codetogether.model.DocumentEntity;
 import ru.itmo.codetogether.model.SessionEntity;
@@ -25,6 +32,7 @@ import ru.itmo.codetogether.repository.UserRepository;
 import ru.itmo.codetogether.repository.UserSessionRepository;
 
 @Service
+@RequiredArgsConstructor
 public class SessionService {
 
     private final SessionRepository sessionRepository;
@@ -33,21 +41,8 @@ public class SessionService {
     private final UserRepository userRepository;
     private final DocumentService documentService;
 
-    public SessionService(
-            SessionRepository sessionRepository,
-            UserSessionRepository userSessionRepository,
-            DocumentRepository documentRepository,
-            UserRepository userRepository,
-            DocumentService documentService) {
-        this.sessionRepository = sessionRepository;
-        this.userSessionRepository = userSessionRepository;
-        this.documentRepository = documentRepository;
-        this.userRepository = userRepository;
-        this.documentService = documentService;
-    }
-
     @Transactional
-    public SessionDto.SessionDetails createSession(UserEntity owner, SessionDto.SessionRequest request) {
+    public SessionDetails createSession(UserEntity owner, SessionRequest request) {
         SessionEntity session = new SessionEntity();
         session.setName(request.name());
         session.setLanguage(request.language());
@@ -74,14 +69,14 @@ public class SessionService {
     }
 
     @Transactional(readOnly = true)
-    public SessionDto.SessionList listSessions(Long userId, Optional<String> roleFilter, int limit, Long cursor) {
+    public SessionList listSessions(Long userId, Optional<String> roleFilter, int limit, Long cursor) {
         List<UserSessionEntity> memberships = userSessionRepository.findByUser_Id(userId);
         var comparator = Comparator.comparing((UserSessionEntity entity) -> entity.getSession().getUpdatedAt()).reversed();
-        List<SessionDto.SessionSummary> summaries = memberships.stream()
+        List<SessionSummary> summaries = memberships.stream()
                 .filter(membership -> roleFilter.map(role -> membership.getRole().equalsIgnoreCase(role)).orElse(true))
                 .sorted(comparator)
                 .map(membership -> toSummary(membership.getSession(), SessionRole.fromString(membership.getRole())))
-                .collect(Collectors.toList());
+                .toList();
         int startIndex = 0;
         if (cursor != null) {
             for (int i = 0; i < summaries.size(); i++) {
@@ -92,13 +87,13 @@ public class SessionService {
             }
         }
         int endIndex = Math.min(startIndex + limit, summaries.size());
-        List<SessionDto.SessionSummary> page = summaries.subList(startIndex, endIndex);
+        List<SessionSummary> page = summaries.subList(startIndex, endIndex);
         Long nextCursor = endIndex < summaries.size() ? page.get(page.size() - 1).id() : null;
-        return new SessionDto.SessionList(List.copyOf(page), nextCursor);
+        return new SessionList(List.copyOf(page), nextCursor);
     }
 
     @Transactional(readOnly = true)
-    public SessionDto.SessionDetails getSession(Long sessionId, Long userId) {
+    public SessionDetails getSession(Long sessionId, Long userId) {
         SessionEntity session = requireSession(sessionId);
         ensureMember(sessionId, userId);
         initializeForDetails(session);
@@ -106,7 +101,7 @@ public class SessionService {
     }
 
     @Transactional
-    public SessionDto.SessionDetails updateSession(Long sessionId, Long userId, SessionDto.SessionUpdateRequest request) {
+    public SessionDetails updateSession(Long sessionId, Long userId, SessionUpdateRequest request) {
         SessionEntity session = requireSession(sessionId);
         ensureOwner(sessionId, userId);
         if (request.name() != null && !request.name().isBlank()) {
@@ -127,13 +122,13 @@ public class SessionService {
     }
 
     @Transactional(readOnly = true)
-    public List<SessionDto.SessionMember> listMembers(Long sessionId) {
+    public List<SessionMember> listMembers(Long sessionId) {
         requireSession(sessionId);
         return userSessionRepository.findBySession_Id(sessionId).stream()
                 .map(membership -> {
                     UserEntity user = membership.getUser();
                     user.getId(); // initialize proxy
-                    return new SessionDto.SessionMember(
+                    return new SessionMember(
                             membership.getSession().getId(),
                             user.getId(),
                             membership.getRole(),
@@ -145,7 +140,7 @@ public class SessionService {
     }
 
     @Transactional
-    public SessionDto.SessionMember addMember(Long sessionId, Long actorId, SessionDto.MemberInviteRequest request) {
+    public SessionMember addMember(Long sessionId, Long actorId, MemberInviteRequest request) {
         ensureOwner(sessionId, actorId);
         SessionEntity session = requireSession(sessionId);
         Long userId = resolveTargetUser(request);
@@ -167,11 +162,11 @@ public class SessionService {
         }
         userSessionRepository.save(membership);
         user.getId();
-        return new SessionDto.SessionMember(sessionId, userId, membership.getRole(), Instant.now(), user.getName(), user.getAvatarUrl());
+        return new SessionMember(sessionId, userId, membership.getRole(), Instant.now(), user.getName(), user.getAvatarUrl());
     }
 
     @Transactional
-    public SessionDto.SessionMember updateRole(Long sessionId, Long actorId, Long targetUserId, SessionDto.MemberRoleRequest request) {
+    public SessionMember updateRole(Long sessionId, Long actorId, Long targetUserId, MemberRoleRequest request) {
         ensureOwner(sessionId, actorId);
         UserSessionEntity membership = userSessionRepository
                 .findBySession_IdAndUser_Id(sessionId, targetUserId)
@@ -183,7 +178,7 @@ public class SessionService {
         userSessionRepository.save(membership);
         UserEntity user = membership.getUser();
         user.getId();
-        return new SessionDto.SessionMember(sessionId, user.getId(), membership.getRole(), Instant.now(), user.getName(), user.getAvatarUrl());
+        return new SessionMember(sessionId, user.getId(), membership.getRole(), Instant.now(), user.getName(), user.getAvatarUrl());
     }
 
     @Transactional
@@ -222,7 +217,7 @@ public class SessionService {
     }
 
     @Transactional
-    public SessionDto.SessionDetails joinByInvite(Long sessionId, Long userId) {
+    public SessionDetails joinByInvite(Long sessionId, Long userId) {
         SessionEntity session = requireSession(sessionId);
         userSessionRepository
                 .findBySession_IdAndUser_Id(sessionId, userId)
@@ -263,14 +258,14 @@ public class SessionService {
                 .orElseThrow(() -> new CodeTogetherException(HttpStatus.NOT_FOUND, "Доска не найдена"));
     }
 
-    private SessionDto.SessionDetails toDetails(SessionEntity session, Long userId) {
+    private SessionDetails toDetails(SessionEntity session, Long userId) {
         initializeForDetails(session);
         SessionRole role = userSessionRepository
                 .findBySession_IdAndUser_Id(session.getId(), userId)
                 .map(entity -> SessionRole.fromString(entity.getRole()))
                 .orElse(SessionRole.VIEWER);
-        DocumentDto.DocumentStats stats = documentService.documentStats(session.getId(), memberCount(session.getId()));
-        return new SessionDto.SessionDetails(
+        DocumentStats stats = documentService.documentStats(session.getId(), memberCount(session.getId()));
+        return new SessionDetails(
                 session.getId(),
                 session.getName(),
                 session.getLanguage(),
@@ -282,9 +277,9 @@ public class SessionService {
                 stats);
     }
 
-    private SessionDto.SessionSummary toSummary(SessionEntity session, SessionRole role) {
+    private SessionSummary toSummary(SessionEntity session, SessionRole role) {
         initializeForDetails(session);
-        return new SessionDto.SessionSummary(
+        return new SessionSummary(
                 session.getId(), session.getName(), session.getLanguage(), session.getOwner().getId(), role.getValue(), session.getUpdatedAt());
     }
 
@@ -304,7 +299,7 @@ public class SessionService {
         }
     }
 
-    private Long resolveTargetUser(SessionDto.MemberInviteRequest request) {
+    private Long resolveTargetUser(MemberInviteRequest request) {
         if (request.userId() != null) {
             return request.userId();
         }

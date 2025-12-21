@@ -12,20 +12,17 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
+import lombok.RequiredArgsConstructor;
 import ru.itmo.codetogether.model.UserEntity;
 import ru.itmo.codetogether.service.TokenService;
 import ru.itmo.codetogether.service.UserService;
 
 @Component
+@RequiredArgsConstructor
 public class TokenAuthenticationFilter extends OncePerRequestFilter {
 
     private final TokenService tokenService;
     private final UserService userService;
-
-    public TokenAuthenticationFilter(TokenService tokenService, UserService userService) {
-        this.tokenService = tokenService;
-        this.userService = userService;
-    }
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)

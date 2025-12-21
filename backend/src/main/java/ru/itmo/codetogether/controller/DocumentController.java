@@ -12,35 +12,35 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import ru.itmo.codetogether.dto.DocumentDto;
+import lombok.RequiredArgsConstructor;
+import ru.itmo.codetogether.dto.document.DocumentSnapshot;
+import ru.itmo.codetogether.dto.document.DocumentState;
+import ru.itmo.codetogether.dto.document.DocumentStats;
+import ru.itmo.codetogether.dto.document.OperationAck;
+import ru.itmo.codetogether.dto.document.OperationRequest;
+import ru.itmo.codetogether.dto.document.OperationsResponse;
+import ru.itmo.codetogether.dto.document.SnapshotRequest;
 import ru.itmo.codetogether.model.UserEntity;
 import ru.itmo.codetogether.service.DocumentService;
 import ru.itmo.codetogether.service.SessionService;
 
 @RestController
 @RequestMapping("/sessions/{sessionId}")
+@RequiredArgsConstructor
 public class DocumentController {
 
     private final DocumentService documentService;
     private final SessionService sessionService;
     private final SimpMessagingTemplate messagingTemplate;
 
-    public DocumentController(
-            DocumentService documentService, SessionService sessionService, SimpMessagingTemplate messagingTemplate) {
-        this.documentService = documentService;
-        this.sessionService = sessionService;
-        this.messagingTemplate = messagingTemplate;
-    }
-
     @GetMapping("/document")
-    public DocumentDto.DocumentState document(
-            @AuthenticationPrincipal UserEntity user, @PathVariable Long sessionId) {
+    public DocumentState document(@AuthenticationPrincipal UserEntity user, @PathVariable Long sessionId) {
         sessionService.ensureMember(sessionId, user.getId());
         return documentService.getDocument(sessionId);
     }
 
     @GetMapping("/document/operations")
-    public DocumentDto.OperationsResponse operations(
+    public OperationsResponse operations(
             @AuthenticationPrincipal UserEntity user,
             @PathVariable Long sessionId,
             @RequestParam(defaultValue = "0") int sinceVersion) {
@@ -49,36 +49,34 @@ public class DocumentController {
     }
 
     @PostMapping("/document/operations")
-    public ResponseEntity<DocumentDto.OperationAck> append(
+    public ResponseEntity<OperationAck> append(
             @AuthenticationPrincipal UserEntity user,
             @PathVariable Long sessionId,
-            @Valid @RequestBody DocumentDto.OperationRequest request) {
+            @Valid @RequestBody OperationRequest request) {
         sessionService.ensureEditor(sessionId, user.getId());
-        DocumentDto.OperationAck ack = documentService.appendOperations(sessionId, user.getId(), request);
+        OperationAck ack = documentService.appendOperations(sessionId, user.getId(), request);
         messagingTemplate.convertAndSend("/topic/sessions/" + sessionId + "/document", ack);
         return ResponseEntity.status(201).body(ack);
     }
 
     @GetMapping("/document/snapshots")
-    public List<DocumentDto.DocumentSnapshot> snapshots(
-            @AuthenticationPrincipal UserEntity user, @PathVariable Long sessionId) {
+    public List<DocumentSnapshot> snapshots(@AuthenticationPrincipal UserEntity user, @PathVariable Long sessionId) {
         sessionService.ensureMember(sessionId, user.getId());
         return documentService.listSnapshots(sessionId);
     }
 
     @PostMapping("/document/snapshots")
-    public ResponseEntity<DocumentDto.DocumentSnapshot> createSnapshot(
+    public ResponseEntity<DocumentSnapshot> createSnapshot(
             @AuthenticationPrincipal UserEntity user,
             @PathVariable Long sessionId,
-            @Valid @RequestBody DocumentDto.SnapshotRequest request) {
+            @Valid @RequestBody SnapshotRequest request) {
         sessionService.ensureEditor(sessionId, user.getId());
-        DocumentDto.DocumentSnapshot snapshot = documentService.saveSnapshot(sessionId, user.getId(), request);
+        DocumentSnapshot snapshot = documentService.saveSnapshot(sessionId, user.getId(), request);
         return ResponseEntity.status(201).body(snapshot);
     }
 
     @GetMapping("/statistics")
-    public DocumentDto.DocumentStats stats(
-            @AuthenticationPrincipal UserEntity user, @PathVariable Long sessionId) {
+    public DocumentStats stats(@AuthenticationPrincipal UserEntity user, @PathVariable Long sessionId) {
         sessionService.ensureMember(sessionId, user.getId());
         return documentService.documentStats(sessionId, sessionService.memberCount(sessionId));
     }

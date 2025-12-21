@@ -17,9 +17,12 @@ import {
 import { DocumentState, OperationAck, OperationRequest, SessionMember, SessionPresence } from '../types';
 import { CrdtOperation, CrdtSequence } from '../services/crdt';
 import { useAuth } from '../contexts/AuthContext';
+import { toMonacoLanguage } from '../utils/languages';
+import { setupMonaco } from '../utils/monacoSetup';
 
 interface Props {
   sessionId: number;
+  language?: string | null;
 }
 
 interface PendingBatch {
@@ -27,7 +30,7 @@ interface PendingBatch {
   tempOperations: CrdtOperation[];
 }
 
-const DocumentEditor: React.FC<Props> = ({ sessionId }) => {
+const DocumentEditor: React.FC<Props> = ({ sessionId, language }) => {
   const { tokens, user } = useAuth();
   const [documentState, setDocumentState] = useState<DocumentState | null>(null);
   const [content, setContent] = useState('');
@@ -61,6 +64,21 @@ const DocumentEditor: React.FC<Props> = ({ sessionId }) => {
     const hash = Math.abs(user.id * 2654435761);
     return `#${(hash & 0xffffff).toString(16).padStart(6, '0')}`;
   }, [user?.id]);
+
+  const editorLanguage = useMemo(() => toMonacoLanguage(language), [language]);
+
+  useEffect(() => {
+    const editor = editorRef.current;
+    const monaco = monacoRef.current;
+    if (!editor || !monaco) {
+      return;
+    }
+    const model = editor.getModel();
+    if (!model) {
+      return;
+    }
+    monaco.editor.setModelLanguage(model, editorLanguage);
+  }, [editorLanguage]);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -228,6 +246,7 @@ const DocumentEditor: React.FC<Props> = ({ sessionId }) => {
   const handleMount: OnMount = (editor, monaco) => {
     editorRef.current = editor;
     monacoRef.current = monaco;
+    setupMonaco(monaco);
     editor.onDidChangeCursorPosition((event) => {
       const position = event.position;
       lastCursorRef.current = { line: position.lineNumber - 1, col: position.column - 1 };
@@ -528,7 +547,7 @@ const DocumentEditor: React.FC<Props> = ({ sessionId }) => {
       ) : (
         <Editor
           height="400px"
-          defaultLanguage="typescript"
+          language={editorLanguage}
           value={content}
           onMount={handleMount}
           onChange={handleChange}

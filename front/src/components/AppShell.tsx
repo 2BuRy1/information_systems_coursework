@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import ProfileMenu from './ProfileMenu';
 
 interface Props {
@@ -13,13 +14,13 @@ const AppShell: React.FC<Props> = ({ title, subtitle, actions, children }) => {
     <div className="app">
       <header className="topbar">
         <div className="topbar-inner">
-          <div className="brand">
+          <Link to="/sessions" className="brand" aria-label="На главную">
             <div className="brand-mark">CT</div>
             <div className="brand-text">
               <div className="brand-title">CodeTogether</div>
               <div className="brand-subtitle">Совместные сессии</div>
             </div>
-          </div>
+          </Link>
           <div className="topbar-right">
             {actions}
             <ProfileMenu />
@@ -40,4 +41,3 @@ const AppShell: React.FC<Props> = ({ title, subtitle, actions, children }) => {
 };
 
 export default AppShell;
-

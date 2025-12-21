@@ -10,35 +10,35 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import ru.itmo.codetogether.dto.PresenceDto;
+import lombok.RequiredArgsConstructor;
+import ru.itmo.codetogether.dto.presence.CursorState;
+import ru.itmo.codetogether.dto.presence.CursorUpdateRequest;
+import ru.itmo.codetogether.dto.presence.Highlight;
+import ru.itmo.codetogether.dto.presence.HighlightRequest;
+import ru.itmo.codetogether.dto.presence.SessionPresence;
 import ru.itmo.codetogether.model.UserEntity;
 import ru.itmo.codetogether.service.PresenceService;
 import ru.itmo.codetogether.service.SessionService;
 
 @RestController
 @RequestMapping("/sessions/{sessionId}")
+@RequiredArgsConstructor
 public class PresenceController {
 
     private final PresenceService presenceService;
     private final SessionService sessionService;
 
-    public PresenceController(PresenceService presenceService, SessionService sessionService) {
-        this.presenceService = presenceService;
-        this.sessionService = sessionService;
-    }
-
     @GetMapping("/presence")
-    public PresenceDto.SessionPresence presence(
-            @AuthenticationPrincipal UserEntity user, @PathVariable Long sessionId) {
+    public SessionPresence presence(@AuthenticationPrincipal UserEntity user, @PathVariable Long sessionId) {
         sessionService.ensureMember(sessionId, user.getId());
         return presenceService.getPresence(sessionId);
     }
 
     @PutMapping("/presence/cursor")
-    public PresenceDto.CursorState updateCursor(
+    public CursorState updateCursor(
             @AuthenticationPrincipal UserEntity user,
             @PathVariable Long sessionId,
-            @Valid @RequestBody PresenceDto.CursorUpdateRequest request) {
+            @Valid @RequestBody CursorUpdateRequest request) {
         sessionService.ensureMember(sessionId, user.getId());
         return presenceService.updateCursor(sessionId, user.getId(), request);
     }
@@ -51,10 +51,10 @@ public class PresenceController {
     }
 
     @PutMapping("/presence/highlight")
-    public PresenceDto.Highlight updateHighlight(
+    public Highlight updateHighlight(
             @AuthenticationPrincipal UserEntity user,
             @PathVariable Long sessionId,
-            @Valid @RequestBody PresenceDto.HighlightRequest request) {
+            @Valid @RequestBody HighlightRequest request) {
         sessionService.ensureMember(sessionId, user.getId());
         return presenceService.updateHighlight(sessionId, user.getId(), request);
     }

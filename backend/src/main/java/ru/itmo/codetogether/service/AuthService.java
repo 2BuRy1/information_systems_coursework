@@ -10,15 +10,22 @@ import org.springframework.http.HttpStatus;
 import org.springframework.security.oauth2.client.registration.ClientRegistration;
 import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
 import org.springframework.stereotype.Service;
-import ru.itmo.codetogether.dto.AuthDto;
-import ru.itmo.codetogether.dto.UserDto;
+import lombok.RequiredArgsConstructor;
+import ru.itmo.codetogether.dto.auth.AuthResponse;
+import ru.itmo.codetogether.dto.auth.AuthTokens;
+import ru.itmo.codetogether.dto.auth.OAuthExchangeRequest;
+import ru.itmo.codetogether.dto.auth.OAuthUrlResponse;
+import ru.itmo.codetogether.dto.user.UserProfile;
+import ru.itmo.codetogether.dto.user.UserUpdateRequest;
 import ru.itmo.codetogether.exception.CodeTogetherException;
 import ru.itmo.codetogether.model.OAuthCredentialsEntity;
 import ru.itmo.codetogether.model.UserEntity;
 import ru.itmo.codetogether.repository.OAuthCredentialsRepository;
 import ru.itmo.codetogether.service.oauth.OAuthProviderClient;
+import ru.itmo.codetogether.service.oauth.OAuthUser;
 
 @Service
+@RequiredArgsConstructor
 public class AuthService {
 
     private static final Duration STATE_TTL = Duration.ofMinutes(5);
@@ -30,57 +37,44 @@ public class AuthService {
     private final OAuthCredentialsRepository credentialsRepository;
     private final Map<String, OAuthState> states = new ConcurrentHashMap<>();
 
-    public AuthService(
-            TokenService tokenService,
-            UserService userService,
-            ClientRegistrationRepository clientRegistrationRepository,
-            OAuthProviderClient providerClient,
-            OAuthCredentialsRepository credentialsRepository) {
-        this.tokenService = tokenService;
-        this.userService = userService;
-        this.clientRegistrationRepository = clientRegistrationRepository;
-        this.providerClient = providerClient;
-        this.credentialsRepository = credentialsRepository;
-    }
-
-    public AuthDto.OAuthUrlResponse githubAuthUrl() {
+    public OAuthUrlResponse githubAuthUrl() {
         return buildAuthorizationUrl("github");
     }
 
-    public AuthDto.OAuthUrlResponse googleAuthUrl() {
+    public OAuthUrlResponse googleAuthUrl() {
         return buildAuthorizationUrl("google");
     }
 
-    public AuthDto.AuthResponse githubExchange(AuthDto.OAuthExchangeRequest request) {
+    public AuthResponse githubExchange(OAuthExchangeRequest request) {
         return exchange("github", request);
     }
 
-    public AuthDto.AuthResponse googleExchange(AuthDto.OAuthExchangeRequest request) {
+    public AuthResponse googleExchange(OAuthExchangeRequest request) {
         return exchange("google", request);
     }
 
-    public UserDto.UserProfile profile(UserEntity user) {
+    public UserProfile profile(UserEntity user) {
         return userService.toProfile(user);
     }
 
-    public UserDto.UserProfile update(UserEntity user, UserDto.UserUpdateRequest request) {
+    public UserProfile update(UserEntity user, UserUpdateRequest request) {
         return userService.updateProfile(user, request);
     }
 
-    private AuthDto.AuthResponse exchange(String provider, AuthDto.OAuthExchangeRequest request) {
+    private AuthResponse exchange(String provider, OAuthExchangeRequest request) {
         OAuthState state = states.remove(request.state());
         if (state == null || state.expiresAt().isBefore(Instant.now()) || !state.provider().equals(provider)) {
             throw new CodeTogetherException(HttpStatus.BAD_REQUEST, "Некорректный state");
         }
         ClientRegistration registration = getRegistration(provider);
-        OAuthProviderClient.OAuthUser oauthUser = providerClient.exchangeCode(registration, request.code(), request.redirectUri());
+        OAuthUser oauthUser = providerClient.exchangeCode(registration, request.code(), request.redirectUri());
         UserEntity user = userService.getOrCreateOAuthUser(oauthUser.name(), oauthUser.email().toLowerCase(Locale.ROOT), oauthUser.avatarUrl());
         persistCredentials(user, provider, oauthUser);
-        AuthDto.AuthTokens tokens = tokenService.issueTokens(user.getId());
-        return new AuthDto.AuthResponse(tokens, userService.toProfile(user));
+        AuthTokens tokens = tokenService.issueTokens(user.getId());
+        return new AuthResponse(tokens, userService.toProfile(user));
     }
 
-    private void persistCredentials(UserEntity user, String provider, OAuthProviderClient.OAuthUser oauthUser) {
+    private void persistCredentials(UserEntity user, String provider, OAuthUser oauthUser) {
         OAuthCredentialsEntity credentials = new OAuthCredentialsEntity();
         credentials.setUser(user);
         credentials.setProvider(provider);
@@ -91,7 +85,7 @@ public class AuthService {
         credentialsRepository.save(credentials);
     }
 
-    private AuthDto.OAuthUrlResponse buildAuthorizationUrl(String provider) {
+    private OAuthUrlResponse buildAuthorizationUrl(String provider) {
         ClientRegistration registration = getRegistration(provider);
         String stateToken = UUID.randomUUID().toString();
         states.put(stateToken, new OAuthState(provider, Instant.now().plus(STATE_TTL)));
@@ -105,7 +99,7 @@ public class AuthService {
                 + String.join(" ", registration.getScopes())
                 + "&state="
                 + stateToken;
-        return new AuthDto.OAuthUrlResponse(url, stateToken);
+        return new OAuthUrlResponse(url, stateToken);
     }
 
     private ClientRegistration getRegistration(String provider) {
@@ -115,6 +109,4 @@ public class AuthService {
         }
         return registration;
     }
-
-    private record OAuthState(String provider, Instant expiresAt) {}
 }

@@ -1,19 +1,27 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { displayInitials, displayName } from '../utils/format';
 
 const AVATARS = Array.from({ length: 12 }, (_, index) => `/avatars/av-${String(index + 1).padStart(2, '0')}.svg`);
+const OAUTH_AVATAR_KEY = 'codetogether-oauth-avatar';
+
+function isCatalogAvatar(url: string) {
+  return url.startsWith('/avatars/');
+}
 
 interface AvatarModalProps {
   open: boolean;
   onClose: () => void;
   onPick: (avatarUrl: string) => void;
+  onRestoreOAuth: (avatarUrl: string) => void;
+  oauthAvatarUrl?: string | null;
   busy: boolean;
 }
 
-const AvatarModal: React.FC<AvatarModalProps> = ({ open, onClose, onPick, busy }) => {
+const AvatarModal: React.FC<AvatarModalProps> = ({ open, onClose, onPick, busy, oauthAvatarUrl, onRestoreOAuth }) => {
   if (!open) return null;
-  return (
+  return createPortal(
     <div className="modal-backdrop" role="dialog" aria-modal="true" onMouseDown={onClose}>
       <div className="modal" onMouseDown={(e) => e.stopPropagation()}>
         <div className="modal-header">
@@ -26,6 +34,18 @@ const AvatarModal: React.FC<AvatarModalProps> = ({ open, onClose, onPick, busy }
           </button>
         </div>
         <div className="avatar-grid">
+          {oauthAvatarUrl && (
+            <button
+              type="button"
+              className="avatar-tile avatar-tile-oauth"
+              onClick={() => onRestoreOAuth(oauthAvatarUrl)}
+              disabled={busy}
+              title="Вернуть аватар из OAuth"
+            >
+              <img src={oauthAvatarUrl} alt="oauth avatar" width={48} height={48} />
+              <div className="avatar-tile-label">OAuth</div>
+            </button>
+          )}
           {AVATARS.map((src) => (
             <button
               key={src}
@@ -50,7 +70,8 @@ const AvatarModal: React.FC<AvatarModalProps> = ({ open, onClose, onPick, busy }
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 
@@ -63,6 +84,7 @@ const ProfileMenu: React.FC = () => {
 
   const name = useMemo(() => displayName(user), [user]);
   const initials = useMemo(() => displayInitials(name), [name]);
+  const oauthAvatarUrl = useMemo(() => localStorage.getItem(OAUTH_AVATAR_KEY), [avatarOpen]);
 
   useEffect(() => {
     const handle = (event: MouseEvent) => {
@@ -79,6 +101,25 @@ const ProfileMenu: React.FC = () => {
   const handlePickAvatar = useCallback(
     async (avatarUrl: string) => {
       if (!user) return;
+      setSaving(true);
+      try {
+        const current = (user.avatarUrl ?? '').trim();
+        if (current && !isCatalogAvatar(current) && !localStorage.getItem(OAUTH_AVATAR_KEY)) {
+          localStorage.setItem(OAUTH_AVATAR_KEY, current);
+        }
+        await patchProfile({ avatarUrl });
+        setAvatarOpen(false);
+        setOpen(false);
+      } finally {
+        setSaving(false);
+      }
+    },
+    [patchProfile, user]
+  );
+
+  const handleRestoreOAuth = useCallback(
+    async (avatarUrl: string) => {
+      if (!user || !avatarUrl) return;
       setSaving(true);
       try {
         await patchProfile({ avatarUrl });
@@ -117,10 +158,16 @@ const ProfileMenu: React.FC = () => {
           </div>
         </div>
       )}
-      <AvatarModal open={avatarOpen} onClose={() => setAvatarOpen(false)} onPick={handlePickAvatar} busy={saving} />
+      <AvatarModal
+        open={avatarOpen}
+        onClose={() => setAvatarOpen(false)}
+        onPick={handlePickAvatar}
+        onRestoreOAuth={handleRestoreOAuth}
+        oauthAvatarUrl={oauthAvatarUrl}
+        busy={saving}
+      />
     </div>
   );
 };
 
 export default ProfileMenu;
-

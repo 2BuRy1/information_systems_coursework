@@ -202,5 +202,4 @@ public class HttpOAuthProviderClient implements OAuthProviderClient {
         return null;
     }
 
-    private record TokenPayload(String accessToken, String refreshToken, Instant expiresAt) {}
 }

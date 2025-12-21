@@ -8,22 +8,22 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import ru.itmo.codetogether.dto.AuthDto;
+import lombok.RequiredArgsConstructor;
+import ru.itmo.codetogether.dto.auth.AuthResponse;
+import ru.itmo.codetogether.dto.auth.OAuthExchangeRequest;
+import ru.itmo.codetogether.dto.auth.OAuthUrlResponse;
 import ru.itmo.codetogether.exception.CodeTogetherException;
 import ru.itmo.codetogether.service.AuthService;
 
 @RestController
 @RequestMapping("/oauth")
+@RequiredArgsConstructor
 public class OAuthController {
 
     private final AuthService authService;
 
-    public OAuthController(AuthService authService) {
-        this.authService = authService;
-    }
-
     @GetMapping("/{provider}/url")
-    public AuthDto.OAuthUrlResponse url(@PathVariable String provider) {
+    public OAuthUrlResponse url(@PathVariable String provider) {
         return switch (provider.toLowerCase()) {
             case "github" -> authService.githubAuthUrl();
             case "google" -> authService.googleAuthUrl();
@@ -32,8 +32,7 @@ public class OAuthController {
     }
 
     @PostMapping("/{provider}/exchange")
-    public AuthDto.AuthResponse exchange(
-            @PathVariable String provider, @Valid @RequestBody AuthDto.OAuthExchangeRequest request) {
+    public AuthResponse exchange(@PathVariable String provider, @Valid @RequestBody OAuthExchangeRequest request) {
         return switch (provider.toLowerCase()) {
             case "github" -> authService.githubExchange(request);
             case "google" -> authService.googleExchange(request);

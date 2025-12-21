@@ -12,40 +12,40 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import ru.itmo.codetogether.dto.SessionDto;
+import lombok.RequiredArgsConstructor;
+import ru.itmo.codetogether.dto.session.MemberInviteRequest;
+import ru.itmo.codetogether.dto.session.MemberRoleRequest;
+import ru.itmo.codetogether.dto.session.SessionMember;
 import ru.itmo.codetogether.model.UserEntity;
 import ru.itmo.codetogether.service.SessionService;
 
 @RestController
 @RequestMapping("/sessions/{sessionId}/members")
+@RequiredArgsConstructor
 public class SessionMembersController {
 
     private final SessionService sessionService;
 
-    public SessionMembersController(SessionService sessionService) {
-        this.sessionService = sessionService;
-    }
-
     @GetMapping
-    public List<SessionDto.SessionMember> list(@PathVariable Long sessionId) {
+    public List<SessionMember> list(@PathVariable Long sessionId) {
         return sessionService.listMembers(sessionId);
     }
 
     @PostMapping
-    public ResponseEntity<SessionDto.SessionMember> add(
+    public ResponseEntity<SessionMember> add(
             @AuthenticationPrincipal UserEntity user,
             @PathVariable Long sessionId,
-            @Valid @RequestBody SessionDto.MemberInviteRequest request) {
-        SessionDto.SessionMember member = sessionService.addMember(sessionId, user.getId(), request);
+            @Valid @RequestBody MemberInviteRequest request) {
+        SessionMember member = sessionService.addMember(sessionId, user.getId(), request);
         return ResponseEntity.status(201).body(member);
     }
 
     @PatchMapping("/{userId}")
-    public SessionDto.SessionMember changeRole(
+    public SessionMember changeRole(
             @AuthenticationPrincipal UserEntity user,
             @PathVariable Long sessionId,
             @PathVariable Long userId,
-            @Valid @RequestBody SessionDto.MemberRoleRequest request) {
+            @Valid @RequestBody MemberRoleRequest request) {
         return sessionService.updateRole(sessionId, user.getId(), userId, request);
     }
 

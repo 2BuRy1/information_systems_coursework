@@ -4,7 +4,12 @@ import java.time.Instant;
 import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import ru.itmo.codetogether.dto.PresenceDto;
+import lombok.RequiredArgsConstructor;
+import ru.itmo.codetogether.dto.presence.CursorState;
+import ru.itmo.codetogether.dto.presence.CursorUpdateRequest;
+import ru.itmo.codetogether.dto.presence.Highlight;
+import ru.itmo.codetogether.dto.presence.HighlightRequest;
+import ru.itmo.codetogether.dto.presence.SessionPresence;
 import ru.itmo.codetogether.model.CursorStateEntity;
 import ru.itmo.codetogether.model.CursorStateId;
 import ru.itmo.codetogether.model.HighlightEntity;
@@ -17,6 +22,7 @@ import ru.itmo.codetogether.repository.SessionRepository;
 import ru.itmo.codetogether.repository.UserRepository;
 
 @Service
+@RequiredArgsConstructor
 public class PresenceService {
 
     private final CursorStateRepository cursorRepository;
@@ -24,20 +30,10 @@ public class PresenceService {
     private final SessionRepository sessionRepository;
     private final UserRepository userRepository;
 
-    public PresenceService(
-            CursorStateRepository cursorRepository,
-            HighlightRepository highlightRepository,
-            SessionRepository sessionRepository,
-            UserRepository userRepository) {
-        this.cursorRepository = cursorRepository;
-        this.highlightRepository = highlightRepository;
-        this.sessionRepository = sessionRepository;
-        this.userRepository = userRepository;
-    }
-
-    public PresenceDto.SessionPresence getPresence(Long sessionId) {
-        List<PresenceDto.CursorState> cursors = cursorRepository.findBySession_Id(sessionId).stream()
-                .map(entity -> new PresenceDto.CursorState(
+    @Transactional(readOnly = true)
+    public SessionPresence getPresence(Long sessionId) {
+        List<CursorState> cursors = cursorRepository.findBySession_Id(sessionId).stream()
+                .map(entity -> new CursorState(
                         entity.getSession().getId(),
                         entity.getUser().getId(),
                         entity.getLine(),
@@ -45,8 +41,8 @@ public class PresenceService {
                         entity.getColor(),
                         entity.getUpdatedAt()))
                 .toList();
-        List<PresenceDto.Highlight> highlights = highlightRepository.findBySession_Id(sessionId).stream()
-                .map(entity -> new PresenceDto.Highlight(
+        List<Highlight> highlights = highlightRepository.findBySession_Id(sessionId).stream()
+                .map(entity -> new Highlight(
                         entity.getSession().getId(),
                         entity.getUser().getId(),
                         entity.getStartLine(),
@@ -56,11 +52,11 @@ public class PresenceService {
                         entity.getColor(),
                         entity.getUpdatedAt()))
                 .toList();
-        return new PresenceDto.SessionPresence(sessionId, cursors, highlights);
+        return new SessionPresence(sessionId, cursors, highlights);
     }
 
     @Transactional
-    public PresenceDto.CursorState updateCursor(Long sessionId, Long userId, PresenceDto.CursorUpdateRequest request) {
+    public CursorState updateCursor(Long sessionId, Long userId, CursorUpdateRequest request) {
         CursorStateId id = new CursorStateId(sessionId, userId);
         CursorStateEntity entity = cursorRepository
                 .findById(id)
@@ -70,7 +66,7 @@ public class PresenceService {
         entity.setColor(request.color() != null ? request.color() : defaultColor(userId));
         entity.touch();
         CursorStateEntity saved = cursorRepository.save(entity);
-        return new PresenceDto.CursorState(
+        return new CursorState(
                 saved.getSession().getId(), saved.getUser().getId(), saved.getLine(), saved.getCol(), saved.getColor(), saved.getUpdatedAt());
     }
 
@@ -80,7 +76,7 @@ public class PresenceService {
     }
 
     @Transactional
-    public PresenceDto.Highlight updateHighlight(Long sessionId, Long userId, PresenceDto.HighlightRequest request) {
+    public Highlight updateHighlight(Long sessionId, Long userId, HighlightRequest request) {
         HighlightId id = new HighlightId(sessionId, userId);
         HighlightEntity entity = highlightRepository
                 .findById(id)
@@ -92,7 +88,7 @@ public class PresenceService {
         entity.setColor(request.color() != null ? request.color() : defaultColor(userId));
         entity.touch();
         HighlightEntity saved = highlightRepository.save(entity);
-        return new PresenceDto.Highlight(
+        return new Highlight(
                 saved.getSession().getId(),
                 saved.getUser().getId(),
                 saved.getStartLine(),

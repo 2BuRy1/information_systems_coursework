@@ -127,3 +127,9 @@ export interface OperationsResponse {
   toVersion: number;
   operations: OperationAck['operations'];
 }
+
+export interface InviteLink {
+  sessionId: number;
+  link: string;
+  expiresAt: string;
+}
