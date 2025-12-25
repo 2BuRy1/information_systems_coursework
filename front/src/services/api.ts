@@ -106,6 +106,25 @@ export async function loadSession(tokens: AuthTokens, sessionId: number): Promis
   return request(`/sessions/${sessionId}`, {}, tokens);
 }
 
+export async function updateSession(
+  tokens: AuthTokens,
+  sessionId: number,
+  payload: Partial<{ name: string; language: string }>,
+): Promise<SessionDetails> {
+  return request(
+    `/sessions/${sessionId}`,
+    {
+      method: "PATCH",
+      body: JSON.stringify(payload),
+    },
+    tokens,
+  );
+}
+
+export async function deleteSession(tokens: AuthTokens, sessionId: number): Promise<void> {
+  await request(`/sessions/${sessionId}`, { method: "DELETE" }, tokens);
+}
+
 export async function loadMembers(tokens: AuthTokens, sessionId: number): Promise<SessionMember[]> {
   return request(`/sessions/${sessionId}/members`, {}, tokens);
 }
